@@ -29,14 +29,19 @@
           <button class="module-btn" id="btn-add-task" type="button">+ Додати</button>
         </div>
 
-        <div class="tasks-toolbar">
+        <div class="tasks-toolbar" style="gap:12px; flex-wrap:wrap;">
           <div class="tasks-filters">
             <button class="pill pill--active" data-filter="all" type="button">Усі</button>
             <button class="pill" data-filter="red" type="button">🔴 Срочно</button>
             <button class="pill" data-filter="blue" type="button">🔵 Звичайно</button>
           </div>
 
-          <div class="tasks-sort">
+          <div class="tasks-sort" style="display:flex; gap:10px; align-items:center;">
+            <select id="assigneeFilter" class="form-input" style="min-width:220px;">
+              <option value="__all__">Відповідальний: Усі</option>
+              <option value="__none__">Відповідальний: Без відповідального</option>
+            </select>
+
             <select id="sortMode">
               <option value="priority">Сортувати: срочність</option>
               <option value="due">Сортувати: строк</option>
@@ -46,6 +51,7 @@
         </div>
 
         <div class="module-content">
+          <div id="taskCounter" style="margin:8px 0 14px; color:#6b7280; font-weight:700;"></div>
           <div id="taskList" class="task-list">
             <div class="task-empty">Завантаження…</div>
           </div>
@@ -75,6 +81,10 @@
       <select id="taskAssignee" class="form-input">
         <option value="">— не вибрано —</option>
       </select>
+
+      <label class="form-label">Коментар (не показується на Головній)</label>
+      <textarea id="taskComment" class="form-input" rows="7"
+        placeholder="Можна писати багато тексту…"></textarea>
 
       <div class="modal-actions">
         <button class="btn-ghost" id="btn-cancel" type="button">Скасувати</button>

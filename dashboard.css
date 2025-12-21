@@ -281,3 +281,22 @@
   cursor:pointer;
 }
 .modal-hint{ margin-top:10px; color:#6b7280; font-size:13px; font-weight:700; }
+/* FIX: очень длинный текст (без пробелов) не ломает верстку */
+.task-row,
+.task-left,
+.task-title,
+.task-comment {
+  min-width: 0;              /* важно для flex */
+}
+
+.task-title,
+.task-comment {
+  overflow-wrap: anywhere;   /* современно: ломает длинные слова */
+  word-break: break-word;    /* запасной вариант */
+  hyphens: auto;             /* переносы где возможно */
+}
+
+/* чтобы мусор не выталкивал кнопку удаления */
+.task-actions {
+  flex: 0 0 auto;
+}

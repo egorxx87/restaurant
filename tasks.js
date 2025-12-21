@@ -13,6 +13,9 @@ let activeFilter = "all"; // all | red | blue
 let activePriority = "red";
 let sortMode = "priority";
 let editId = ""; // если не пусто — редактируем
+let isSaving = false;
+
+let assigneeFilter = "__all__"; // __all__ | __none__ | name
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btn-add-task")?.addEventListener("click", openModalNew);
@@ -21,6 +24,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("sortMode")?.addEventListener("change", (e) => {
     sortMode = e.target.value;
+    render();
+  });
+
+  document.getElementById("assigneeFilter")?.addEventListener("change", (e) => {
+    assigneeFilter = e.target.value;
     render();
   });
 
@@ -41,7 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  loadAdminsForSelect();
+  loadAdminsForSelect(); // заполняет селекты (modal + фильтр)
   load();
 });
 
@@ -66,6 +74,7 @@ async function load(){
     if (!json || !json.ok) throw new Error((json && json.error) ? json.error : "Load error");
 
     allTasks = Array.isArray(json.data) ? json.data : [];
+    refreshAssigneeFilterOptions_();
     render();
   } catch (e){
     console.error(e);
@@ -77,13 +86,23 @@ async function load(){
 
 function render(){
   const list = document.getElementById("taskList");
+  const counter = document.getElementById("taskCounter");
   if (!list) return;
 
   let items = [...allTasks].filter(t => (t.status || "open") === "open");
 
+  // priority filter (red/blue)
   if (activeFilter === "red") items = items.filter(t => (t.priority || "blue") === "red");
   if (activeFilter === "blue") items = items.filter(t => (t.priority || "blue") === "blue");
 
+  // assignee filter
+  if (assigneeFilter === "__none__") {
+    items = items.filter(t => !String(t.assignee || "").trim());
+  } else if (assigneeFilter !== "__all__") {
+    items = items.filter(t => String(t.assignee || "").trim() === assigneeFilter);
+  }
+
+  // sort
   items.sort((a,b) => {
     if (sortMode === "new") return String(b.createdAt||"").localeCompare(String(a.createdAt||""));
     if (sortMode === "due") {
@@ -100,6 +119,11 @@ function render(){
     return String(b.createdAt||"").localeCompare(String(a.createdAt||""));
   });
 
+  if (counter) {
+    const totalOpen = allTasks.filter(t => (t.status || "open") === "open").length;
+    counter.textContent = `Показано: ${items.length} із ${totalOpen}`;
+  }
+
   if (!items.length){
     setListEmpty("Немає активних завдань");
     return;
@@ -111,17 +135,27 @@ function render(){
     const due = dueStr ? escapeHtml(dueStr) : "без строку";
     const badgeClass = (t.priority === "red") ? "badge badge--red" : "badge badge--blue";
     const who = String(t.assignee || "").trim();
+    const comment = String(t.comment || "").trim();
 
     return `
       <div class="task-row" data-edit="${escapeHtml(t.id)}">
         <div class="task-left">
-          <div class="task-title">${escapeHtml(t.title || "")}</div>
+          <div class="task-title" style="white-space:pre-wrap; overflow-wrap:anywhere; word-break:break-word;">${escapeHtml(t.title || "")}</div>
+
           <div class="task-meta">
             <span class="${badgeClass}">${pr}</span>
             <span class="task-due">⏳ ${due}</span>
-            ${who ? `<span class="task-due">👤 ${escapeHtml(who)}</span>` : ``}
+            ${who ? `<span class="task-due">👤 ${escapeHtml(who)}</span>` : `<span class="task-due">👤 без відповідального</span>`}
           </div>
+
+          ${comment ? `
+            <div class="task-comment"
+              style="...white-space:pre-wrap; overflow-wrap:anywhere; word-break:break-word;">
+              ${escapeHtml(comment)}
+            </div>
+          ` : ``}
         </div>
+
         <div class="task-actions">
           <button class="icon-btn" data-del="${escapeHtml(t.id)}" title="Видалити">🗑️</button>
         </div>
@@ -165,6 +199,7 @@ async function deleteTask(id){
     const json = await res.json();
     if (!json.ok) throw new Error(json.error || "Delete error");
     allTasks = allTasks.filter(t => t.id !== id);
+    refreshAssigneeFilterOptions_();
     render();
   } catch (e){
     console.error(e);
@@ -182,10 +217,14 @@ function openModalNew(){
 
   document.getElementById("taskTitle").value = "";
   document.getElementById("taskDue").value = "";
+  document.getElementById("taskComment").value = "";
 
   activePriority = "red";
   document.querySelectorAll(".seg-btn").forEach(x => x.classList.remove("seg-btn--active"));
   document.querySelector('.seg-btn[data-priority="red"]')?.classList.add("seg-btn--active");
+
+  const sel = document.getElementById("taskAssignee");
+  if (sel) sel.value = "";
 
   document.getElementById("taskModal")?.classList.remove("modal-hidden");
 }
@@ -199,6 +238,7 @@ function openModalEdit(id){
 
   document.getElementById("taskTitle").value = t.title || "";
   document.getElementById("taskDue").value = formatDueHuman_(t.due) || "";
+  document.getElementById("taskComment").value = String(t.comment || "");
 
   activePriority = (t.priority === "blue") ? "blue" : "red";
   document.querySelectorAll(".seg-btn").forEach(x => x.classList.remove("seg-btn--active"));
@@ -211,13 +251,20 @@ function openModalEdit(id){
 }
 
 function closeModal(){
+  if (isSaving) return; // во время сохранения не закрываем
   document.getElementById("taskModal")?.classList.add("modal-hidden");
 }
 
 async function saveTask(){
+  if (isSaving) return; // защита от многократных кликов
+
+  const btnSave = document.getElementById("btn-save");
+  const btnCancel = document.getElementById("btn-cancel");
+
   const title = String(document.getElementById("taskTitle")?.value || "").trim();
   const due = String(document.getElementById("taskDue")?.value || "").trim();
   const assignee = String(document.getElementById("taskAssignee")?.value || "").trim();
+  const comment = String(document.getElementById("taskComment")?.value || "").trim();
 
   if (!title){
     alert("Введи текст задачі");
@@ -228,11 +275,16 @@ async function saveTask(){
     return;
   }
 
-  setLoading(true, editId ? "Збереження…" : "Додавання…");
+  // FRONT-FACE saving (block UI)
+  isSaving = true;
+  if (btnSave) { btnSave.disabled = true; btnSave.style.opacity = "0.7"; btnSave.textContent = "Збереження…"; }
+  if (btnCancel) { btnCancel.disabled = true; btnCancel.style.opacity = "0.6"; }
+  setLoading(true, editId ? "Збереження задачі…" : "Додавання задачі…");
+
   try {
     const payload = editId
-      ? { action: "tasks_update", id: editId, data: { title, priority: activePriority, due, assignee } }
-      : { action: "tasks_add", data: { title, priority: activePriority, due, assignee } };
+      ? { action: "tasks_update", id: editId, data: { title, priority: activePriority, due, assignee, comment } }
+      : { action: "tasks_add", data: { title, priority: activePriority, due, assignee, comment } };
 
     const res = await fetch(TASKS_API_URL, {
       method: "POST",
@@ -244,21 +296,24 @@ async function saveTask(){
     if (!json.ok) throw new Error(json.error || "Save error");
 
     editId = "";
-    closeModal();
     await load();
+    document.getElementById("taskModal")?.classList.add("modal-hidden");
   } catch (e){
     console.error(e);
     alert("Помилка збереження");
   } finally {
     setLoading(false);
+    isSaving = false;
+    if (btnSave) { btnSave.disabled = false; btnSave.style.opacity = ""; btnSave.textContent = "Зберегти"; }
+    if (btnCancel) { btnCancel.disabled = false; btnCancel.style.opacity = ""; }
   }
 }
 
 /* ===== Admins dropdown (from schedule API) ===== */
 
 async function loadAdminsForSelect(){
-  const sel = document.getElementById("taskAssignee");
-  if (!sel) return;
+  const modalSel = document.getElementById("taskAssignee");
+  const filterSel = document.getElementById("assigneeFilter");
 
   try {
     const now = new Date();
@@ -273,21 +328,61 @@ async function loadAdminsForSelect(){
       });
     });
 
-    // очистим всё, кроме первого option
-    const keep0 = new Option("— не вибрано —", "");
-    sel.innerHTML = "";
-    sel.appendChild(keep0);
+    const sorted = [...names].sort((a,b)=>a.localeCompare(b));
 
-    [...names].sort().forEach(n => sel.appendChild(new Option(n, n)));
+    // modal select
+    if (modalSel) {
+      const keep0 = new Option("— не вибрано —", "");
+      modalSel.innerHTML = "";
+      modalSel.appendChild(keep0);
+      sorted.forEach(n => modalSel.appendChild(new Option(n, n)));
+    }
+
+    // filter select (append after base options)
+    if (filterSel) {
+      // оставим 2 первых option как есть
+      const base = [
+        { value:"__all__", text:"Відповідальний: Усі" },
+        { value:"__none__", text:"Відповідальний: Без відповідального" }
+      ];
+      filterSel.innerHTML = "";
+      base.forEach(o => filterSel.appendChild(new Option(o.text, o.value)));
+      sorted.forEach(n => filterSel.appendChild(new Option(`Відповідальний: ${n}`, n)));
+      filterSel.value = "__all__";
+      assigneeFilter = "__all__";
+    }
   } catch (e){
     console.error("Admins load error", e);
   }
+}
+
+// если в задачах есть имя которого нет в админах (на всякий случай) — добавим в фильтр
+function refreshAssigneeFilterOptions_(){
+  const filterSel = document.getElementById("assigneeFilter");
+  if (!filterSel) return;
+
+  const existing = new Set([...filterSel.options].map(o => o.value));
+  const names = new Set(
+    allTasks
+      .map(t => String(t.assignee || "").trim())
+      .filter(Boolean)
+  );
+
+  [...names].sort((a,b)=>a.localeCompare(b)).forEach(n => {
+    if (!existing.has(n)) filterSel.appendChild(new Option(`Відповідальний: ${n}`, n));
+  });
+
+  // сохраняем текущее значение если оно существует
+  if ([...filterSel.options].some(o => o.value === assigneeFilter)) filterSel.value = assigneeFilter;
+  else { assigneeFilter = "__all__"; filterSel.value = "__all__"; }
 }
 
 /* ===== helpers ===== */
 
 function setListEmpty(text){
   const list = document.getElementById("taskList");
+  const counter = document.getElementById("taskCounter");
+  if (counter) counter.textContent = "";
   if (list) list.innerHTML = `<div class="task-empty">${escapeHtml(text)}</div>`;
 }
 
