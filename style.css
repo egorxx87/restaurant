@@ -171,7 +171,7 @@ body {
   background: rgba(15, 23, 42, 0.35);
   display: flex; align-items: center; justify-content: center;
   padding: 16px;
-  z-index: 50;
+  z-index: 500;
 }
 .picker-hidden { display: none; }
 .picker {
@@ -609,18 +609,9 @@ body {
 }
 
 .week-role-grid{
-  display: grid;
-  grid-auto-rows: 30px;
-  min-width: 980px;
-
-  border: 1px solid var(--grid-line, rgba(17,24,39,0.035));
-  border-radius: 14px;
-  overflow: hidden;
-  background: #fff;
-
-  width: 100%;
+  width: max-content;   /* чтобы сетка занимала нужную ширину */
+  min-width: 980px;     /* как было раньше — появится горизонтальный скролл */
 }
-
 .week-role-head{
   position: sticky;
   top: 0;
@@ -638,6 +629,12 @@ body {
   z-index: 12;
   text-align: left;
   box-shadow: 1px 0 0 var(--grid-line, rgba(17,24,39,0.035));
+}
+.week-role-head--time,
+.week-role-time{
+  background: #fff;              /* важно, чтобы не просвечивало */
+  z-index: 20;                   /* поверх цветных блоков */
+  box-shadow: 1px 0 0 rgba(17,24,39,0.06);
 }
 
 .week-role-time{
@@ -711,8 +708,7 @@ body {
   border-radius: 999px;
 }
 
-/* чтобы сетка могла сжиматься */
-.week-role-grid{ width:100%; min-width:0; }
+
 
 /* совпадение классов с JS */
 .week-role-cell--click{ cursor:pointer; }
@@ -1019,4 +1015,142 @@ body {
   opacity: 0.25 !important;
   cursor: default !important;
   pointer-events: none !important;
+}
+/* =====================================================
+   FINAL MOBILE STICKY FIX (ALL VIEWS)
+   - only for phones
+   - fixes Zeit column in:
+     1) day-grid (.day-compact)
+     2) week-role (.week-role-wrap)
+     3) classic tables (.schedule-wrapper .schedule-table)  <-- THIS WAS MISSING
+   ===================================================== */
+
+@media (max-width: 820px){
+
+  /* iOS: sticky works more stable when overflow is real "auto" */
+  .day-compact,
+  .week-role-wrap,
+  .schedule-wrapper{
+    overflow: auto !important;
+    overflow-y: hidden !important;
+    position: relative;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ---------- DAY GRID (already used in Day / Week cards / Month cards) ---------- */
+  .day-grid{ position: relative; }
+
+  .day-time{
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 50 !important;
+    background: #fff !important;
+    box-shadow: 1px 0 0 rgba(17,24,39,0.08);
+  }
+
+  .day-head--time{
+    position: sticky !important;
+    left: 0 !important;
+    top: 0 !important;
+    z-index: 60 !important;
+    background: #f3f4f6 !important;
+    box-shadow: 1px 0 0 rgba(17,24,39,0.08);
+  }
+
+  /* ---------- WEEK ROLE GRID ---------- */
+  .week-role-grid{
+    display: grid !important;
+    width: max-content !important;
+    min-width: 980px !important;
+    grid-auto-rows: 28px !important;
+    position: relative;
+  }
+
+  .week-role-time{
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 50 !important;
+    background: #fff !important;
+    box-shadow: 1px 0 0 rgba(17,24,39,0.08);
+  }
+
+  .week-role-head--time{
+    position: sticky !important;
+    left: 0 !important;
+    top: 0 !important;
+    z-index: 60 !important;
+    background: #f3f4f6 !important;
+    box-shadow: 1px 0 0 rgba(17,24,39,0.08);
+  }
+
+  /* ---------- CLASSIC TABLE (Week/Month "Все" and other pages) ---------- */
+  .schedule-table{ position: relative; }
+
+  /* first column header */
+  .schedule-table thead th:first-child{
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 70 !important;          /* выше остальных th */
+    background: #f3f4f6 !important;
+    box-shadow: 1px 0 0 rgba(17,24,39,0.08);
+  }
+
+  /* first column cells (time) */
+  .schedule-table tbody td.time-cell{
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 55 !important;
+    background: #fff !important;
+    box-shadow: 1px 0 0 rgba(17,24,39,0.08);
+  }
+}
+@media (max-width: 820px){
+  /* FIX: overflow:hidden in .day-grid breaks sticky on iOS/phones */
+  .day-grid{ overflow: visible !important; }
+  /* на всякий случай для старых устройств */
+  .day-head{ -webkit-transform: translateZ(0); transform: translateZ(0); }
+}
+/* ===== MOBILE LANDSCAPE: keep Zeit sticky too ===== */
+@media (orientation: landscape) and (max-height: 500px){
+
+  .day-compact,
+  .week-role-wrap,
+  .schedule-wrapper{
+    overflow: auto !important;
+    overflow-y: hidden !important;
+    position: relative;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* DAY GRID */
+  .day-time,
+  .day-head--time{
+    position: sticky !important;
+    left: 0 !important;
+  }
+  .day-time{ z-index: 50 !important; background:#fff !important; }
+  .day-head--time{ z-index: 60 !important; background:#f3f4f6 !important; }
+
+  /* WEEK ROLE GRID */
+  .week-role-time,
+  .week-role-head--time{
+    position: sticky !important;
+    left: 0 !important;
+  }
+  .week-role-time{ z-index: 50 !important; background:#fff !important; }
+  .week-role-head--time{ z-index: 60 !important; background:#f3f4f6 !important; }
+
+  /* CLASSIC TABLE */
+  .schedule-table thead th:first-child{
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 70 !important;
+    background:#f3f4f6 !important;
+  }
+  .schedule-table tbody td.time-cell{
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 55 !important;
+    background:#fff !important;
+  }
 }
