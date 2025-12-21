@@ -96,7 +96,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
 
   // ============ helpers ============
-  function setLoading(on, text = "Загрузка…") {
+  function setLoading(on, text = "Завантаження...") {
     if (!loaderEl) return;
     loaderTextEl.textContent = text;
     loaderEl.classList.toggle("global-loader--hidden", !on);
@@ -256,7 +256,7 @@ function hourShort_(t){
       const data = await jsonp(`${SCHEDULE_API_URL}?action=get_colors`);
       NAME_COLORS = (data && typeof data === "object") ? data : {};
     } catch (e) {
-      console.warn("Не удалось загрузить цвета:", e);
+      console.warn("Неможливо завантажити кольори:", e);
       NAME_COLORS = {};
     }
   }
@@ -322,7 +322,7 @@ function hourShort_(t){
     try {
       await postNoCors({ action: "set_color", name: n, color: c });
     } catch (e) {
-      console.warn("Не удалось сохранить цвет:", e);
+      console.warn("Не вдалося зберегти колір:", e);
     }
 
     NAME_COLORS[n] = c;
@@ -443,7 +443,7 @@ function applyDynamicLabels(root){
   // ============ load & render ============
   async function loadScheduleForMonth(year, month) {
     const monthStr = `${year}-${pad2(month)}`;
-    setLoading(true, `Загружаю расписание за ${monthStr}…`);
+    setLoading(true, `Завантажую розклад за ${monthStr}…`);
     weekLabelEl.textContent = `Месяц ${monthStr}`;
     subLabelEl.textContent = " ";
 
@@ -473,9 +473,9 @@ return {
       setLoading(false);
     } catch (e) {
       setLoading(false);
-      weekLabelEl.textContent = "Ошибка загрузки";
+      weekLabelEl.textContent = "Помилка завантаження";
       subLabelEl.textContent = String(e && e.message ? e.message : e);
-      scheduleContentEl.innerHTML = `<p style="color:#b91c1c;font-weight:800;">Ошибка загрузки: ${subLabelEl.textContent}</p>`;
+      scheduleContentEl.innerHTML = `<p style="color:#b91c1c;font-weight:800;">Помилка завантаження: ${subLabelEl.textContent}</p>`;
     }
   }
 
@@ -487,7 +487,7 @@ return {
 
     if (!rows.length) {
       scheduleContentEl.innerHTML =
-        "<p style='font-size:0.9rem;color:#6b7280;font-weight:700;'>На этот период нет смен.</p>";
+        "<p style='font-size:0.9rem;color:#6b7280;font-weight:700;'>На цей період немає змін.</p>";
       return;
     }
 
@@ -533,7 +533,7 @@ return {
 
   if (!rows.length) {
     targetEl.innerHTML =
-      "<p style='font-size:0.9rem;color:#6b7280;font-weight:700;'>На этот день нет смен.</p>";
+      "<p style='font-size:0.9rem;color:#6b7280;font-weight:700;'>На цей день немає змін.</p>";
     return;
   }
 
@@ -664,7 +664,7 @@ return {
 
     const dates = Array.from(byDate.keys()).sort();
     if (!dates.length) {
-      scheduleContentEl.innerHTML = "<p style='color:#6b7280;font-weight:700;'>Нет данных.</p>";
+      scheduleContentEl.innerHTML = "<p style='color:#6b7280;font-weight:700;'>Немає даних.</p>";
       return;
     }
 
@@ -768,10 +768,10 @@ return {
       2;
 
     const roleTitle =
-      roleKey === "admin" ? "Админы" :
-      roleKey === "kellner" ? "Официанты" :
+      roleKey === "admin" ? "Адміни" :
+      roleKey === "kellner" ? "Офіціанти" :
       roleKey === "kueche" ? "Кухня" :
-      "Уборка";
+      "Прибирання";
 
     const times = getFixedTimes_();
 
@@ -795,7 +795,7 @@ return {
 
     weeks.forEach((days, wIndex)=>{
       out += `<div class="month-week-card">
-        <div class="month-week-head">Неделя ${formatDate(days[0])} — ${formatDate(days[6])}</div>
+        <div class="month-week-head">Тиждень${formatDate(days[0])} — ${formatDate(days[6])}</div>
         <div class="week-role-wrap">
           <div class="week-role-grid" style="grid-template-columns:${gridCols.trim()};">
       `;
@@ -929,10 +929,10 @@ return {
     2;
 
   const roleTitle =
-    roleKey === "admin" ? "Админы" :
-    roleKey === "kellner" ? "Официанты" :
+    roleKey === "admin" ? "Адміни" :
+    roleKey === "kellner" ? "Офіціанти" :
     roleKey === "kueche" ? "Кухня" :
-    "Уборка";
+    "Прибирання";
 
   const times = getFixedTimes_();
 
@@ -1153,9 +1153,9 @@ return {
 
   function renderForCurrentPeriod() {
     if (!allRows.length) {
-      weekLabelEl.textContent = "Нет данных";
+      weekLabelEl.textContent = "Немає даних";
       subLabelEl.textContent = " ";
-      scheduleContentEl.innerHTML = "<p style='color:#6b7280;font-weight:700;'>Нет данных.</p>";
+      scheduleContentEl.innerHTML = "<p style='color:#6b7280;font-weight:700;'>Немає даних.</p>";
       setWeekFilterVisible_(false);
       setMonthFilterVisible_(false);
       return;
@@ -1172,13 +1172,13 @@ return {
     } else if (currentMode === MODE_WEEK) {
       const range = getWeekRange(currentDate);
       start = range.start; end = range.end;
-      weekLabelEl.textContent = `Неделя ${formatDate(range.start)} — ${formatDate(range.end)}`;
+      weekLabelEl.textContent = `Тиждень ${formatDate(range.start)} — ${formatDate(range.end)}`;
       setWeekFilterVisible_(true);
       setMonthFilterVisible_(false);
     } else {
       const range = getMonthRange(currentDate);
       start = range.start; end = range.end;
-      weekLabelEl.textContent = `Месяц ${formatMonthYear(range.start)}`;
+      weekLabelEl.textContent = `Місяць ${formatMonthYear(range.start)}`;
       setWeekFilterVisible_(false);
       setMonthFilterVisible_(true);
     }
@@ -1191,7 +1191,7 @@ return {
       return t >= startMs && t <= endMs;
     });
 
-    subLabelEl.textContent = `Смен: ${currentRows.length}`;
+    subLabelEl.textContent = `Змін: ${currentRows.length}`;
 
     if (currentMode === MODE_DAY) {
       // reset week special
@@ -1271,8 +1271,8 @@ return {
     title.style.fontWeight = "900";
     title.style.marginBottom = "6px";
     title.textContent = currentName
-      ? `🎨 Цвет для: ${currentName}`
-      : "🎨 Цвет: выберите имя";
+      ? `🎨 Колір для: ${currentName}`
+      : "🎨 Колір: виберіть ім'я";
 
     const grid = document.createElement("div");
     grid.style.display = "flex";
@@ -1311,7 +1311,7 @@ return {
     customBtn.addEventListener("click", async () => {
       if (!currentName) return;
       const cur = NAME_COLORS[currentName] || "#34d399";
-      const hex = prompt(`HEX цвет для "${currentName}"`, cur);
+      const hex = prompt(`HEX колір для "${currentName}"`, cur);
       if (!hex) return;
       await saveNameColor(currentName, hex.trim());
       renderForCurrentPeriod();
@@ -1329,10 +1329,10 @@ return {
     pickerState = { el: targetEl, row, role, slot };
 
     const roleLabel =
-      role === "admin" ? "Администраторы (Admin)" :
-      role === "kellner" ? "Официанты (Kellner)" :
+      role === "admin" ? "Адміністратори (Admin)" :
+      role === "kellner" ? "Офіціанти (Kellner)" :
       role === "kueche" ? "Кухня (Küche)" :
-      "Уборка (Reinigung)";
+      "Прибирання (Reinigung)";
     pickerRoleLabel.textContent = roleLabel;
 
     const currentName = getCurrentCellNameFromState(row, role, slot);
@@ -1401,7 +1401,7 @@ return {
 
     if (trimmed) {
       const extendStr = prompt(
-        "Продлить смену этим сотрудником ещё на сколько часов вниз по этому дню?\nОставьте пусто или 0, если только этот час.",
+        "Продовжити зміну цим співробітником ще на скільки годин вниз по цьому дню?\nЗалишіть порожньо або 0, якщо ця година.",
         "0"
       );
       const extend = parseInt(extendStr, 10);
@@ -1414,7 +1414,7 @@ return {
     if (!pickerState) return;
     const { row, role, slot } = pickerState;
     const currentValue = getCurrentCellNameFromState(row, role, slot);
-    const newValue = prompt("Введите имя сотрудника", currentValue || "");
+    const newValue = prompt("Введіть ім'я користувача", currentValue || "");
     if (newValue === null) return;
     applySelection(newValue);
   });
@@ -1563,7 +1563,7 @@ return {
 
   function renderStatsView() {
     if (!statsState.data) {
-      statsSummaryEl.innerHTML = "<p style='color:#6b7280;font-weight:800;'>Нет данных для статистики.</p>";
+      statsSummaryEl.innerHTML = "<p style='color:#6b7280;font-weight:800;'>Немає даних статистики.</p>";
       statsTableEl.innerHTML = "";
       return;
     }
@@ -1572,7 +1572,7 @@ return {
     const monthData = statsState.data[key];
 
     if (!monthData) {
-      statsSummaryEl.innerHTML = "<p style='color:#6b7280;font-weight:800;'>Нет данных за этот месяц.</p>";
+      statsSummaryEl.innerHTML = "<p style='color:#6b7280;font-weight:800;'>Немає даних за цей місяць.</p>";
       statsTableEl.innerHTML = "";
       return;
     }
@@ -1581,21 +1581,21 @@ return {
     const totals = monthData.totals;
     const personsMap = monthData.persons;
 
-    const roleLabelMap = { all: "Все роли", kellner: "Kellner", kueche: "Küche", reinigung: "Reinigung" };
+    const roleLabelMap = { all: "Усі ролі", kellner: "Kellner", kueche: "Küche", reinigung: "Reinigung" };
 
     statsSummaryEl.innerHTML = `
       <div class="stats-summary-grid">
         <div class="stats-summary-item">
-          <div class="stats-summary-label">Месяц</div>
+          <div class="stats-summary-label">Місяць</div>
           <div class="stats-summary-value">${monthLabel}</div>
-          <div class="stats-summary-days">${monthData.usedDays} дней</div>
+          <div class="stats-summary-days">${monthData.usedDays} днів</div>
         </div>
         <div class="stats-summary-item">
-          <div class="stats-summary-label">Всего часов</div>
+          <div class="stats-summary-label">Всього годин</div>
           <div class="stats-summary-value">${totals.overall}</div>
         </div>
         <div class="stats-summary-item">
-          <div class="stats-summary-label">Фильтр</div>
+          <div class="stats-summary-label">Фільтр</div>
           <div class="stats-summary-value">${roleLabelMap[statsState.role] || ""}</div>
         </div>
       </div>
@@ -1603,7 +1603,7 @@ return {
 
     const entries = Object.entries(personsMap);
     if (!entries.length) {
-      statsTableEl.innerHTML = "<p style='color:#6b7280;font-weight:800;'>Нет смен.</p>";
+      statsTableEl.innerHTML = "<p style='color:#6b7280;font-weight:800;'>Немає змін.</p>";
       return;
     }
 
@@ -1694,7 +1694,7 @@ return {
   try{
     // кнопки: Все / Админы / Официанты / Кухня / Уборка
     monthFilterEl.innerHTML = `
-      <button class="week-filter__pill week-filter__pill--active" data-month-filter="all">Все</button>
+      <button class="week-filter__pill week-filter__pill--active" data-month-filter="all">Усі</button>
       <button class="week-filter__pill" data-month-filter="admin">Админы</button>
       <button class="week-filter__pill" data-month-filter="kellner">Официанты</button>
       <button class="week-filter__pill" data-month-filter="kueche">Кухня</button>
@@ -1718,7 +1718,7 @@ if (scheduleContentEl) {
 }
   }catch(e){ console.warn("month filter mount failed", e); }
 
-  setLoading(true, "Загружаю расписание…");
+  setLoading(true, "Завантажую розклад…");
 
   try {
     await loadNameColors();

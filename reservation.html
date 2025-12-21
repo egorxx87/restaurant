@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
 <head>
   <meta charset="UTF-8" />
-  <title>Резервации</title>
+  <title>Резервації</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="reservation.css">
@@ -10,26 +10,27 @@
 <body>
   <div class="layout">
     <header class="header">
-      <h1 class="header__title">Резервации</h1>
+      <h1 class="header__title">Резервації</h1>
       <p class="header__subtitle">
-        Данные берутся из Google Таблицы (лист <strong>Reserve</strong>). Можно смотреть / редактировать / добавлять.
+        Дані беруться з Google Таблиці (лист <strong>Reserve</strong>). Можна переглядати, редагувати та додавати.
       </p>
     </header>
 
-    <!-- НАВИГАЦИЯ -->
+    <!-- НАВІГАЦІЯ -->
     <div class="top-nav">
-      <a class="top-nav__btn" href="index.html">Главная</a>
-      <a class="top-nav__btn" href="schedule.html">Расписание</a>
-      <a class="top-nav__btn top-nav__btn--active" href="reservation.html">Резервации</a>
+      <a class="top-nav__btn" href="index.html">Головна</a>
+      <a class="top-nav__btn" href="schedule.html">Розклад</a>
+      <a class="top-nav__btn top-nav__btn--active" href="reservation.html">Резервації</a>
     </div>
 
     <main>
       <div class="card">
+
         <div class="res-toolbar">
           <div class="res-left">
-            <button id="res-today" class="week-nav__btn" type="button">Сегодня</button>
-            <button id="res-yesterday" class="week-nav__btn" type="button">Вчера</button>
-            <button id="res-all" class="week-nav__btn" type="button">Все</button>
+            <button id="res-today" class="week-nav__btn" type="button">Сьогодні</button>
+            <button id="res-yesterday" class="week-nav__btn" type="button">Вчора</button>
+            <button id="res-all" class="week-nav__btn" type="button">Усі</button>
           </div>
 
           <div class="res-right">
@@ -37,40 +38,39 @@
               Дата:
               <input id="res-date" class="res-input" type="date" />
             </label>
-            <button id="res-apply-date" class="week-nav__btn" type="button">Показать</button>
+            <button id="res-apply-date" class="week-nav__btn" type="button">Показати</button>
           </div>
         </div>
 
         <div class="res-status">
-          <span id="res-status-text">Загружаю…</span>
+          <span id="res-status-text">Завантажую…</span>
           <span id="res-error-text" class="res-error" style="display:none;"></span>
         </div>
 
-        <!-- DESKTOP TABLE -->
+        <!-- DESKTOP -->
         <div class="res-only-desktop">
           <div class="res-table-wrap">
             <table class="res-table">
               <thead>
                 <tr>
-                  <th class="col-confirm">Подтв.</th>
-                  <th class="col-date">Дата</th>
-                  <th class="col-time">Время</th>
-                  <th class="col-guests">К-ть</th>
-                  <th class="col-who">От кого + контакты</th>
-                  <th class="col-actions"></th>
+                  <th>Підтв.</th>
+                  <th>Дата</th>
+                  <th>Час</th>
+                  <th>К-ть</th>
+                  <th>Від кого + контакти</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody id="res-tbody"></tbody>
             </table>
           </div>
 
-          <!-- НОВАЯ РЕЗЕРВАЦИЯ -->
           <div class="res-new">
-            <div class="res-new__title">Новая резервация</div>
+            <div class="res-new__title">Нова резервація</div>
 
             <div class="res-new__grid">
               <label class="res-f">
-                <span>Подтв.</span>
+                <span>Підтв.</span>
                 <input id="new-confirmed" type="checkbox" class="res-checkbox">
               </label>
 
@@ -80,7 +80,7 @@
               </label>
 
               <label class="res-f">
-                <span>Время</span>
+                <span>Час</span>
                 <input id="new-time" class="res-field" placeholder="18:30">
               </label>
 
@@ -90,130 +90,65 @@
               </label>
 
               <label class="res-f span-2">
-                <span>От кого</span>
-                <input id="new-from" class="res-field" placeholder="Имя / организация">
+                <span>Від кого</span>
+                <input id="new-from" class="res-field" placeholder="Імʼя / організація">
               </label>
 
               <label class="res-f span-2">
                 <span>Email</span>
-                <input id="new-email" class="res-field" placeholder="name@email.com">
+                <input id="new-email" class="res-field">
               </label>
 
               <label class="res-f span-2">
                 <span>Телефон</span>
-                <input id="new-phone" class="res-field" placeholder="+43 ...">
+                <input id="new-phone" class="res-field">
               </label>
 
               <label class="res-f span-2">
                 <span>Оплата</span>
-                <input id="new-payment" class="res-field" placeholder="На місці / Треба виставити рахунок / ...">
+                <input id="new-payment" class="res-field">
               </label>
 
               <label class="res-f">
-                <span>Цена</span>
-                <input id="new-price" class="res-field" placeholder="14">
+                <span>Ціна</span>
+                <input id="new-price" class="res-field">
               </label>
 
               <label class="res-f">
                 <span>Меню</span>
-                <input id="new-menu" class="res-field" placeholder="є / немає">
+                <input id="new-menu" class="res-field">
               </label>
 
               <label class="res-f span-2">
-                <span>Примечание</span>
-                <input id="new-menu2" class="res-field" placeholder="Напр. написати меню!">
+                <span>Примітка</span>
+                <input id="new-menu2" class="res-field">
               </label>
             </div>
 
             <div class="res-new__actions">
-              <button id="res-add" class="week-nav__btn res-primary" type="button">Добавить</button>
-              <span class="res-new__hint">Enter тоже добавляет.</span>
+              <button id="res-add" class="week-nav__btn res-primary" type="button">Додати</button>
+              <span class="res-new__hint">Enter також додає.</span>
             </div>
           </div>
         </div>
 
-        <!-- MOBILE CARDS -->
+        <!-- MOBILE -->
         <div class="res-only-mobile">
           <div id="res-cards" class="res-cards"></div>
-
-          <div class="res-new res-new--mobile">
-            <div class="res-new__title">Новая резервация</div>
-
-            <div class="res-new__grid">
-              <label class="res-f">
-                <span>Подтв.</span>
-                <input id="m-new-confirmed" type="checkbox" class="res-checkbox">
-              </label>
-
-              <label class="res-f">
-                <span>Дата</span>
-                <input id="m-new-date" class="res-field" placeholder="15.12.2025">
-              </label>
-
-              <label class="res-f">
-                <span>Время</span>
-                <input id="m-new-time" class="res-field" placeholder="18:30">
-              </label>
-
-              <label class="res-f">
-                <span>К-ть</span>
-                <input id="m-new-guests" class="res-field" placeholder="25">
-              </label>
-
-              <label class="res-f span-2">
-                <span>От кого</span>
-                <input id="m-new-from" class="res-field" placeholder="Имя / организация">
-              </label>
-
-              <label class="res-f span-2">
-                <span>Email</span>
-                <input id="m-new-email" class="res-field" placeholder="name@email.com">
-              </label>
-
-              <label class="res-f span-2">
-                <span>Телефон</span>
-                <input id="m-new-phone" class="res-field" placeholder="+43 ...">
-              </label>
-
-              <label class="res-f span-2">
-                <span>Оплата</span>
-                <input id="m-new-payment" class="res-field">
-              </label>
-
-              <label class="res-f">
-                <span>Цена</span>
-                <input id="m-new-price" class="res-field">
-              </label>
-
-              <label class="res-f">
-                <span>Меню</span>
-                <input id="m-new-menu" class="res-field">
-              </label>
-
-              <label class="res-f span-2">
-                <span>Примечание</span>
-                <input id="m-new-menu2" class="res-field">
-              </label>
-            </div>
-
-            <div class="res-new__actions">
-              <button id="m-res-add" class="week-nav__btn res-primary" type="button">Добавить</button>
-            </div>
-          </div>
         </div>
 
         <div class="footer-note">
-          ✅ Главное и контакты всегда видно в строке. Остальное — в "Детали" (раскрыть).<br/>
-          ✍️ Редактирование: изменил → вышел из поля = автосохранение в Google Sheet.
+          ✅ Головне та контакти завжди видно в рядку. Інше — у «Деталях».<br>
+          ✍️ Редагування: змінив → вийшов з поля = автозбереження.
         </div>
+
       </div>
     </main>
   </div>
 
-  <!-- Лоадер -->
   <div id="global-loader" class="global-loader global-loader--hidden">
     <div class="spinner"></div>
-    <div id="global-loader-text" class="global-loader__text">Загрузка…</div>
+    <div id="global-loader-text" class="global-loader__text">Завантаження…</div>
   </div>
 
   <div id="toast" class="res-toast" style="display:none;"></div>

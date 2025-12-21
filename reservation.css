@@ -231,9 +231,11 @@
   animation: spin 0.9s linear infinite;
 }
 .global-loader__text { font-weight: 900; color: #111827; }
-@keyframes spin { to { transform: rotate(360deg); }
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
 /* Стили для верхней навигации в резервациях (такие же как в расписании) */
- }
+
  /* Стили для верхней навигации в резервациях (такие же как в расписании) */
 .top-nav {
   display: inline-flex;
@@ -266,4 +268,69 @@
 @media (max-width: 480px) {
   .top-nav { width: 100%; }
   .top-nav__btn { flex: 1; }
+}
+/* ===== FIX: убрать пустые прямоугольники под "Редактировать" ===== */
+
+/* скрытая строка деталей не должна оставлять след */
+.res-detail {
+  display: none;
+}
+
+.res-detail td {
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+}
+
+/* когда раскрыта */
+.res-detail[style*="table-row"] td {
+  padding: 14px !important;
+  background: #f9fafb; /* аккуратный фон деталей */
+  border-top: 1px solid #e5e7eb;
+}
+
+/* чтобы кнопка не "висела в пустоте" */
+.res-main td {
+  vertical-align: middle;
+}
+/* FIX: убрать "ступеньки/прямоугольники" в колонке Actions */
+.res-table td:last-child,
+.res-table th:last-child{
+  background: transparent !important;
+  border-left: none !important;
+}
+
+.res-actions{
+  background: transparent !important;
+}
+/* ===== FIX: убрать "ступеньки" справа — рисуем фон/линию на строке, не на ячейках ===== */
+
+/* убираем фон/линию у ячеек */
+.res-table th,
+.res-table td{
+  background: transparent !important;
+  border-bottom: none !important;
+}
+
+/* рисуем как надо на строках */
+.res-table thead tr{
+  background: #f3f4f6;
+  border-bottom: 1px solid #e5e7eb;
+}
+.res-table tbody tr{
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* hover/сегодня — тоже на строке, чтобы не было "квадратов" */
+.res-table tbody tr.res-main:hover{
+  background: #fafafa;
+}
+.res-table tbody tr.res-today{
+  background: rgba(16,185,129,.08);
+}
+
+/* левую зелёную полосу оставляем */
+.res-table tbody tr.res-today td:first-child{
+  border-left: 4px solid rgba(16,185,129,.9);
 }
