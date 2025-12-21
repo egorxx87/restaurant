@@ -12,26 +12,19 @@ const RESERVATION_API_URL =
 const TASKS_API_URL =
   "https://script.google.com/macros/s/AKfycbzKxxknHm2WBYLRzNOAWaK66VGvUZMbT5tPjpTR6j2J_uYh838LRI5Nk0a2H4DPIkkG/exec";
 
-// sheet columns count for admin duty (left block)
 const ADMIN_COLS = 3;
-
-// cache for schedule month
 let _schedCache = null;
 
 document.addEventListener("DOMContentLoaded", () => {
-  // duty admins (today/tomorrow)
   loadDutyAdminsForOffset(0, "duty-admin-today");
   loadDutyAdminsForOffset(1, "duty-admin-tomorrow");
 
-  // reservations today/tomorrow
   loadReservationsSummary(0);
   loadReservationsSummary(1);
 
-  // schedule today/tomorrow (NO admins, only Kellner/Küche/Reinigung)
   loadScheduleSummary(0);
   loadScheduleSummary(1);
 
-  // tasks mini list
   loadTasksMini();
 });
 
@@ -124,12 +117,6 @@ async function loadReservationsSummary(dayOffset){
   const timesEl  = document.getElementById(dayOffset === 0 ? "res-today-times"  : "res-tomorrow-times");
   if (!guestsEl || !timesEl) return;
 
-  if (!RESERVATION_API_URL) {
-    guestsEl.textContent = "—";
-    timesEl.textContent = "Встав URL резервацій";
-    return;
-  }
-
   try {
     const target = addDays(new Date(), dayOffset);
     const ddmmyyyy = toDDMMYYYY(target);
@@ -173,8 +160,7 @@ async function loadReservationsSummary(dayOffset){
 }
 
 /* =========================
-   SCHEDULE (today/tomorrow)
-   NO admins. Only roles
+   SCHEDULE (today/tomorrow) — roles only
 ========================= */
 
 async function loadScheduleSummary(dayOffset){
@@ -240,14 +226,12 @@ function renderRole(title, map){
   if (!map || map.size === 0) {
     return `<div class="role"><b>${title}</b><div>—</div></div>`;
   }
-
   const lines = [];
   for (const [name, times] of map.entries()){
     times.sort((a,b)=>a.localeCompare(b));
     const intervals = buildIntervalsFromTimes(times);
     lines.push(`${escapeHtml(name)}: ${escapeHtml(intervals.join(", "))}`);
   }
-
   return `<div class="role"><b>${title}</b><div>${lines.join("<br>")}</div></div>`;
 }
 
@@ -261,7 +245,6 @@ async function loadTasksMini(){
   if (!list || !empty) return;
 
   try {
-    // file:// → JSONP
     const useJsonp = (location.protocol === "file:");
     let json;
 
@@ -296,11 +279,12 @@ async function loadTasksMini(){
       top.map(t => {
         const badgeClass = (t.priority === "red") ? "badge badge--red" : "badge badge--blue";
         const prText = (t.priority === "red") ? "🔴 Срочно" : "🔵 Звичайно";
-        const due = (t.due && String(t.due).trim()) ? `⏳ ${escapeHtml(t.due)}` : "⏳ без строку";
+        const dueStr = formatDueHuman_(t.due);
+        const due = dueStr ? `⏳ ${escapeHtml(dueStr)}` : "⏳ без строку";
         const who = String(t.assignee || "").trim();
 
         return `
-          <div class="task-row" style="padding:10px;">
+          <div class="task-row" style="padding:10px; cursor:pointer;" onclick="location.href='tasks.html'">
             <div class="task-left">
               <div class="task-title" style="font-size:14px;">${escapeHtml(t.title || "")}</div>
               <div class="task-meta" style="margin-top:6px;">
@@ -372,6 +356,17 @@ function buildIntervalsFromTimes(times){
   return res;
 }
 
+function formatDueHuman_(due){
+  if (!due) return "";
+  const s = String(due).trim();
+  if (/^\d{2}\.\d{2}\.\d{4}$/.test(s)) return s;
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    return `${pad2(d.getDate())}.${pad2(d.getMonth()+1)}.${d.getFullYear()}`;
+  }
+  return s;
+}
+
 function jsonp(url){
   return new Promise((resolve, reject) => {
     const cb = "cb_" + Math.random().toString(36).slice(2);
@@ -385,11 +380,13 @@ function jsonp(url){
         script.remove();
       }
     };
+
     script.onerror = () => {
       delete window[cb];
       script.remove();
       reject(new Error("JSONP load failed"));
     };
+
     document.body.appendChild(script);
   });
 }

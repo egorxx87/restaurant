@@ -12,9 +12,10 @@ let allTasks = [];
 let activeFilter = "all"; // all | red | blue
 let activePriority = "red";
 let sortMode = "priority";
+let editId = ""; // если не пусто — редактируем
 
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("btn-add-task")?.addEventListener("click", openModal);
+  document.getElementById("btn-add-task")?.addEventListener("click", openModalNew);
   document.getElementById("btn-cancel")?.addEventListener("click", closeModal);
   document.getElementById("btn-save")?.addEventListener("click", saveTask);
 
@@ -40,8 +41,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  loadAdminsForSelect(); // ← админы в dropdown
-  load();                // ← задачи
+  loadAdminsForSelect();
+  load();
 });
 
 async function load(){
@@ -51,9 +52,7 @@ async function load(){
   }
 
   setLoading(true, "Завантаження задач…");
-
   try {
-    // Если file:// — берём JSONP (CORS-safe)
     const useJsonp = (location.protocol === "file:");
     let json;
 
@@ -88,8 +87,8 @@ function render(){
   items.sort((a,b) => {
     if (sortMode === "new") return String(b.createdAt||"").localeCompare(String(a.createdAt||""));
     if (sortMode === "due") {
-      const ad = toSortableDate_(a.due);
-      const bd = toSortableDate_(b.due);
+      const ad = toSortableDate_(formatDueHuman_(a.due));
+      const bd = toSortableDate_(formatDueHuman_(b.due));
       if (!ad && !bd) return 0;
       if (!ad) return 1;
       if (!bd) return -1;
@@ -108,22 +107,21 @@ function render(){
 
   list.innerHTML = items.map(t => {
     const pr = (t.priority === "red") ? "🔴 Срочно" : "🔵 Звичайно";
-    const due = (t.due && String(t.due).trim()) ? escapeHtml(t.due) : "без строку";
+    const dueStr = formatDueHuman_(t.due);
+    const due = dueStr ? escapeHtml(dueStr) : "без строку";
     const badgeClass = (t.priority === "red") ? "badge badge--red" : "badge badge--blue";
     const who = String(t.assignee || "").trim();
 
     return `
-      <div class="task-row">
+      <div class="task-row" data-edit="${escapeHtml(t.id)}">
         <div class="task-left">
           <div class="task-title">${escapeHtml(t.title || "")}</div>
-
           <div class="task-meta">
             <span class="${badgeClass}">${pr}</span>
             <span class="task-due">⏳ ${due}</span>
             ${who ? `<span class="task-due">👤 ${escapeHtml(who)}</span>` : ``}
           </div>
         </div>
-
         <div class="task-actions">
           <button class="icon-btn" data-del="${escapeHtml(t.id)}" title="Видалити">🗑️</button>
         </div>
@@ -131,13 +129,27 @@ function render(){
     `;
   }).join("");
 
+  // delete
   list.querySelectorAll("[data-del]").forEach(btn => {
-    btn.addEventListener("click", async () => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
       const id = btn.getAttribute("data-del");
       if (!id) return;
+
       const ok = confirm("Ви впевнені, що хочете видалити цю задачу?");
       if (!ok) return;
+
       await deleteTask(id);
+    });
+  });
+
+  // edit on row click
+  list.querySelectorAll("[data-edit]").forEach(row => {
+    row.addEventListener("click", (e) => {
+      if (e.target && e.target.closest("[data-del]")) return;
+      const id = row.getAttribute("data-edit");
+      if (!id) return;
+      openModalEdit(id);
     });
   });
 }
@@ -163,15 +175,41 @@ async function deleteTask(id){
 }
 
 /* ===== modal ===== */
-function openModal(){
+
+function openModalNew(){
+  editId = "";
+  document.getElementById("taskModalTitle").textContent = "Нова задача";
+
   document.getElementById("taskTitle").value = "";
   document.getElementById("taskDue").value = "";
-  // не сбрасываем assignee — удобно, но можешь сбросить при желании
+
   activePriority = "red";
   document.querySelectorAll(".seg-btn").forEach(x => x.classList.remove("seg-btn--active"));
   document.querySelector('.seg-btn[data-priority="red"]')?.classList.add("seg-btn--active");
+
   document.getElementById("taskModal")?.classList.remove("modal-hidden");
 }
+
+function openModalEdit(id){
+  const t = allTasks.find(x => x.id === id);
+  if (!t) return;
+
+  editId = id;
+  document.getElementById("taskModalTitle").textContent = "Редагувати задачу";
+
+  document.getElementById("taskTitle").value = t.title || "";
+  document.getElementById("taskDue").value = formatDueHuman_(t.due) || "";
+
+  activePriority = (t.priority === "blue") ? "blue" : "red";
+  document.querySelectorAll(".seg-btn").forEach(x => x.classList.remove("seg-btn--active"));
+  document.querySelector(`.seg-btn[data-priority="${activePriority}"]`)?.classList.add("seg-btn--active");
+
+  const sel = document.getElementById("taskAssignee");
+  if (sel) sel.value = t.assignee || "";
+
+  document.getElementById("taskModal")?.classList.remove("modal-hidden");
+}
+
 function closeModal(){
   document.getElementById("taskModal")?.classList.add("modal-hidden");
 }
@@ -190,24 +228,27 @@ async function saveTask(){
     return;
   }
 
-  setLoading(true, "Додавання…");
+  setLoading(true, editId ? "Збереження…" : "Додавання…");
   try {
+    const payload = editId
+      ? { action: "tasks_update", id: editId, data: { title, priority: activePriority, due, assignee } }
+      : { action: "tasks_add", data: { title, priority: activePriority, due, assignee } };
+
     const res = await fetch(TASKS_API_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({
-        action: "tasks_add",
-        data: { title, priority: activePriority, due, assignee }
-      })
+      body: JSON.stringify(payload)
     });
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error || "Add error");
 
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || "Save error");
+
+    editId = "";
     closeModal();
     await load();
   } catch (e){
     console.error(e);
-    alert("Помилка додавання");
+    alert("Помилка збереження");
   } finally {
     setLoading(false);
   }
@@ -233,13 +274,11 @@ async function loadAdminsForSelect(){
     });
 
     // очистим всё, кроме первого option
-    const keep0 = sel.querySelector("option[value='']");
+    const keep0 = new Option("— не вибрано —", "");
     sel.innerHTML = "";
-    sel.appendChild(keep0 || new Option("— не вибрано —", ""));
+    sel.appendChild(keep0);
 
-    [...names].sort().forEach(n => {
-      sel.appendChild(new Option(n, n));
-    });
+    [...names].sort().forEach(n => sel.appendChild(new Option(n, n)));
   } catch (e){
     console.error("Admins load error", e);
   }
@@ -265,6 +304,23 @@ function setLoading(on, text){
   if (!el) return;
   if (t && text) t.textContent = text;
   el.classList.toggle("global-loader--hidden", !on);
+}
+
+function formatDueHuman_(due){
+  if (!due) return "";
+
+  const s = String(due).trim();
+  if (/^\d{2}\.\d{2}\.\d{4}$/.test(s)) return s;
+
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) {
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${dd}.${mm}.${yyyy}`;
+  }
+
+  return s;
 }
 
 function escapeHtml(s){
