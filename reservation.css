@@ -1,0 +1,269 @@
+.res-toolbar{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:10px;
+}
+.res-left,.res-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.res-label{font-size:.8rem;color:#4b5563;display:flex;align-items:center;gap:6px;}
+.res-input{border:1px solid #e5e7eb;border-radius:999px;padding:6px 10px;font-size:.85rem;background:#fff;}
+
+.res-status{display:flex;gap:10px;align-items:center;margin-bottom:10px;font-size:.85rem;color:#374151;}
+.res-error{color:#b91c1c;}
+
+.res-only-mobile{display:none;}
+.res-only-desktop{display:block;}
+@media (max-width: 760px){
+  .res-only-desktop{display:none;}
+  .res-only-mobile{display:block;}
+}
+
+/* TABLE */
+.res-table-wrap{
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  overflow:hidden;
+}
+.res-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:.9rem;
+  table-layout:fixed;
+}
+.res-table th,.res-table td{
+  border-bottom:1px solid #e5e7eb;
+  padding:10px 10px;
+  vertical-align:top;
+  text-align:left;
+  background:#fff;
+}
+.res-table th{
+  background:#f3f4f6;
+  font-weight:700;
+}
+
+.col-confirm{width:78px;}
+.col-date{width:130px;}
+.col-time{width:110px;}
+.col-guests{width:90px;}
+.col-actions{width:86px;}
+/* col-who остаётся широким и тянется — там контакты всегда помещаются */
+
+.res-main:hover td{background:#fafafa;}
+
+.res-today td{
+  background: rgba(16,185,129,.08);
+}
+.res-today td:first-child{
+  border-left:4px solid rgba(16,185,129,.9);
+}
+
+.res-who{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.res-who__name{
+  font-weight:700;
+  color:#111827;
+  line-height:1.15;
+  word-break:break-word;
+}
+.res-who__contacts{
+  display:flex;
+  gap:14px;
+  flex-wrap:wrap;
+  font-size:.82rem;
+  color:#374151;
+}
+.res-who__contacts a{
+  color:#374151;
+  text-decoration:none;
+  border-bottom:1px dashed rgba(55,65,81,.35);
+}
+.res-who__contacts a:hover{border-bottom-color:rgba(55,65,81,.8);}
+
+.res-actions{
+  display:flex;
+  justify-content:flex-end;
+}
+.res-expand{
+  border:1px solid #e5e7eb;
+  background:#f9fafb;
+  border-radius:999px;
+  padding:6px 10px;
+  cursor:pointer;
+  font-size:.8rem;
+  color:#374151;
+}
+.res-expand:hover{background:#fff;}
+
+.res-detail td{
+  background:#fbfbfb;
+}
+.res-detail__grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:10px;
+  padding:10px 0;
+}
+.res-df{display:flex;flex-direction:column;gap:4px;}
+.res-df span{font-size:.75rem;color:#6b7280;}
+.res-field{
+  border:1px solid #e5e7eb;
+  background:#fff;
+  border-radius:10px;
+  padding:8px 10px;
+  font-size:.9rem;
+  outline:none;
+}
+.res-field:focus{
+  border-color:#111827;
+  box-shadow:0 0 0 3px rgba(17,24,39,.08);
+}
+
+.res-df.span-2{grid-column: span 2;}
+.res-detail__top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom:8px;
+}
+.res-detail__title{
+  font-weight:700;
+  color:#111827;
+}
+.res-saving{opacity:.6;pointer-events:none;}
+
+/* NEW FORM */
+.res-new{
+  margin-top:14px;
+  border:1px solid #e5e7eb;
+  border-radius:14px;
+  padding:12px;
+  background:#fff;
+}
+.res-new__title{font-weight:800;margin-bottom:10px;}
+.res-new__grid{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:10px;
+}
+.res-new__grid .span-2{grid-column: span 2;}
+.res-f{display:flex;flex-direction:column;gap:4px;}
+.res-f span{font-size:.75rem;color:#6b7280;}
+.res-checkbox{width:18px;height:18px;align-self:flex-start;margin-top:6px;}
+.res-new__actions{display:flex;align-items:center;gap:10px;margin-top:10px;}
+.res-new__hint{font-size:.78rem;color:#6b7280;}
+
+.res-primary{
+  background:#111827 !important;
+  color:#f9fafb !important;
+  border-color:#111827 !important;
+}
+
+@media (max-width: 760px){
+  .res-new__grid{grid-template-columns: 1fr;}
+  .res-new__grid .span-2{grid-column:auto;}
+}
+
+/* MOBILE CARDS */
+.res-cards{display:grid;gap:10px;}
+.res-card{
+  border:1px solid #e5e7eb;
+  border-radius:14px;
+  padding:12px;
+  background:#fff;
+}
+.res-card--today{
+  background: rgba(16,185,129,.08);
+  border-color: rgba(16,185,129,.35);
+}
+.res-card__top{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:10px;
+  margin-bottom:10px;
+}
+.res-card__title{font-weight:800;}
+.res-card__sub{font-size:.85rem;color:#4b5563;}
+.res-card__contacts{margin-top:6px;display:flex;gap:14px;flex-wrap:wrap;font-size:.85rem;}
+.res-card__contacts a{color:#111827;text-decoration:none;border-bottom:1px dashed rgba(17,24,39,.35);}
+.res-card__grid{display:grid;grid-template-columns:1fr;gap:10px;}
+
+.res-toast{
+  position:fixed;
+  left:50%;
+  bottom:16px;
+  transform:translateX(-50%);
+  background:#111827;
+  color:#f9fafb;
+  padding:10px 12px;
+  border-radius:999px;
+  font-size:.85rem;
+  box-shadow:0 10px 20px rgba(15,23,42,.2);
+  z-index:100;
+  max-width:92vw;
+  text-align:center;
+}
+/* Global loader */
+.global-loader {
+  position: fixed;
+  inset: 0;
+  background: rgba(243,244,246,0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 80;
+  backdrop-filter: blur(2px);
+}
+.global-loader--hidden { display: none; }
+.spinner {
+  width: 34px; height: 34px;
+  border-radius: 999px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #111827;
+  animation: spin 0.9s linear infinite;
+}
+.global-loader__text { font-weight: 900; color: #111827; }
+@keyframes spin { to { transform: rotate(360deg); }
+/* Стили для верхней навигации в резервациях (такие же как в расписании) */
+ }
+ /* Стили для верхней навигации в резервациях (такие же как в расписании) */
+.top-nav {
+  display: inline-flex;
+  background: #e5e7eb;
+  border-radius: 999px;
+  padding: 4px;
+  gap: 6px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.top-nav__btn {
+  text-decoration: none;
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 0.88rem;
+  color: #4b5563;
+  background: transparent;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+.top-nav__btn--active { 
+  background: #111827; 
+  color: #f9fafb; 
+}
+
+/* Адаптивность для верхней навигации */
+@media (max-width: 480px) {
+  .top-nav { width: 100%; }
+  .top-nav__btn { flex: 1; }
+}

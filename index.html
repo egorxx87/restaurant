@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Панель управления — Neubauschenke</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <div class="layout">
+    <header class="header">
+      <h1 class="header__title">Панель управления Neubauschenke</h1>
+      <p class="header__subtitle">
+        Основные показатели и быстрый доступ
+      </p>
+    </header>
+
+    <!-- НАВИГАЦИЯ -->
+    <div class="top-nav">
+      <a class="top-nav__btn top-nav__btn--active" href="index.html">Главная</a>
+      <a class="top-nav__btn" href="schedule.html">Расписание</a>
+      <a class="top-nav__btn" href="reservation.html">Резервации</a>
+    </div>
+
+    <main>
+      <div class="dashboard-grid">
+        <!-- Модуль 1: Дежурный администратор -->
+        <div class="dashboard-module">
+          <div class="module-header">
+            <h2 class="module-title">Дежурный администратор</h2>
+            <span class="module-time">Сегодня</span>
+          </div>
+          <div class="module-content">
+            <div class="admin-info">
+              <div class="admin-avatar">
+                <span>👨‍💼</span>
+              </div>
+              <div class="admin-details">
+                <div class="admin-name">—</div>
+                <div class="admin-contact">—</div>
+              </div>
+            </div>
+            <div class="module-note">
+              <em>Информация загружается...</em>
+            </div>
+          </div>
+        </div>
+
+        <!-- Модуль 2: Резервации на сегодня -->
+        <div class="dashboard-module">
+          <div class="module-header">
+            <h2 class="module-title">Резервации на сегодня</h2>
+            <a href="reservation.html" class="module-link">Все →</a>
+          </div>
+          <div class="module-content">
+            <div class="stats-grid">
+              <div class="stat-item">
+                <div class="stat-value">0</div>
+                <div class="stat-label">Всего</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value">0</div>
+                <div class="stat-label">Подтверждено</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value">0</div>
+                <div class="stat-label">Гостей</div>
+              </div>
+            </div>
+            <div class="module-note">
+              <em>Данные загружаются...</em>
+            </div>
+          </div>
+        </div>
+
+        <!-- Модуль 3: График персонала на сегодня -->
+        <div class="dashboard-module">
+          <div class="module-header">
+            <h2 class="module-title">График на сегодня</h2>
+            <a href="schedule.html" class="module-link">Весь график →</a>
+          </div>
+          <div class="module-content">
+            <div class="schedule-today">
+              <div class="role-section">
+                <div class="role-title">Kellner</div>
+                <div class="role-staff">—</div>
+              </div>
+              <div class="role-section">
+                <div class="role-title">Küche</div>
+                <div class="role-staff">—</div>
+              </div>
+              <div class="role-section">
+                <div class="role-title">Reinigung</div>
+                <div class="role-staff">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Модуль 4: Входные задачи -->
+        <div class="dashboard-module module-tasks">
+          <div class="module-header">
+            <h2 class="module-title">Входные задачи</h2>
+            <button class="module-btn">+ Добавить</button>
+          </div>
+          <div class="module-content">
+            <div class="task-list">
+              <div class="task-empty">
+                Нет активных задач
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Модуль 5: События -->
+        <div class="dashboard-module">
+          <div class="module-header">
+            <h2 class="module-title">Ближайшие события</h2>
+            <span class="module-time">7 дней</span>
+          </div>
+          <div class="module-content">
+            <div class="events-list">
+              <div class="event-empty">
+                Нет запланированных событий
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Модуль 6: Быстрые действия -->
+        <div class="dashboard-module module-actions">
+          <div class="module-header">
+            <h2 class="module-title">Быстрые действия</h2>
+          </div>
+          <div class="module-content">
+            <div class="action-buttons">
+              <a href="reservation.html?add=new" class="action-btn">
+                <span>➕</span>
+                Новая резервация
+              </a>
+              <a href="schedule.html?mode=day" class="action-btn">
+                <span>👥</span>
+                Назначить смену
+              </a>
+              <button class="action-btn">
+                <span>📊</span>
+                Статистика
+              </button>
+              <button class="action-btn">
+                <span>📋</span>
+                Отчет
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Лоадер -->
+  <div id="global-loader" class="global-loader global-loader--hidden">
+    <div class="spinner"></div>
+    <div id="global-loader-text" class="global-loader__text">Загрузка…</div>
+  </div>
+
+  <script>
+    // Скрипт для главной страницы
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('Главная страница загружена');
+    });
+  </script>
+</body>
+</html>

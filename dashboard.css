@@ -1,0 +1,68 @@
+/* dashboard.css */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.dashboard-module {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
+  border: 1px solid #e5e7eb;
+}
+
+.module-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.module-title {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #111827;
+}
+
+.module-time {
+  font-size: 0.8rem;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.module-link {
+  font-size: 0.8rem;
+  color: #111827;
+  text-decoration: none;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+.module-link:hover {
+  background: #f9fafb;
+}
+
+.module-btn {
+  font-size: 0.8rem;
+  color: #fff;
+  background: #111827;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+/* Модуль дежурного администратора */
+.admin-info {
+  display: flex;
+  align
