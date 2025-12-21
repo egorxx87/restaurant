@@ -1,4 +1,4 @@
-const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbzcsZOu_Xf4XUiZWmBhP3EAX_j8wOYSAB2cCTjqIvL1_o-DdVCYQU3Mozs0LVX9hS9ADw/exec";
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwNlMF6GEshtn2-5C1n-EsaCRkNZa2xPOQ2mA2zfdYvZyEIl3JSk4evG2NgkCMQaUdqaA/exec";
 
 // Desktop DOM
 const elTbody = document.getElementById("res-tbody");
