@@ -65,6 +65,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   const weekFilterEl = document.getElementById("week-filter");
   const weekCompactEl = document.getElementById("week-compact-view");
 
+
+  // MONTH FILTER (кнопки ролей в режиме "Месяц")
+  // Создаём динамически (чтобы не править HTML)
+  const monthFilterEl = document.createElement("div");
+  monthFilterEl.id = "month-filter";
+  monthFilterEl.className = "week-filter";
+  monthFilterEl.style.display = "none";
+
+  const monthRoleViewEl = document.createElement("div");
+  monthRoleViewEl.id = "month-role-view";
+  monthRoleViewEl.style.display = "none";
+
   // State
   let currentMode = MODE_DAY;
   let currentDate = new Date();
@@ -680,7 +692,221 @@ return {
     });
   }
 
-  // ===== NEW: Week Role Timeline (сплошные столбики на неделю для 1 роли) =====
+  
+  // ===== MONTH: list of days (как сейчас, но весь месяц) =====
+  function renderMonthDayList(roleFilter = "all"){
+    // группируем по дню
+    const byDate = new Map();
+    currentRows.forEach(r => {
+      if (!r.date) return;
+      if (!byDate.has(r.date)) byDate.set(r.date, []);
+      byDate.get(r.date).push(r);
+    });
+
+    // берём все дни месяца (включая пустые)
+    const range = getMonthRange(currentDate);
+    const days = [];
+    for (let d = new Date(range.start); d <= range.end; d.setDate(d.getDate()+1)){
+      const day = new Date(d);
+      day.setHours(0,0,0,0);
+      days.push(day);
+    }
+
+    let html = `<div class="week-blocks month-blocks">`;
+    days.forEach(day=>{
+      const iso = toISODate_(day);
+      const title = `${getWeekdayName(day)} ${formatDate(day)}`;
+      html += `
+        <div class="week-day-card">
+          <div class="week-day-title">${title}</div>
+          <div class="week-day-body" data-month-day="${iso}"></div>
+        </div>
+      `;
+    });
+    html += `</div>`;
+    scheduleContentEl.innerHTML = html;
+
+    days.forEach(day=>{
+      const iso = toISODate_(day);
+      const host = scheduleContentEl.querySelector(`[data-month-day="${iso}"]`);
+      if (!host) return;
+      const rows = (byDate.get(iso) || []);
+      renderDayGridCells(rows, host, roleFilter);
+    });
+  }
+
+  // ===== MONTH: календарь по неделям (для выбранной роли) =====
+  function renderMonthRoleCalendar(roleKey){
+    if (!monthRoleViewEl) return;
+
+    const range = getMonthRange(currentDate);
+    const monthStart = new Date(range.start);
+    const monthEnd = new Date(range.end);
+
+    // строим недели: от понедельника перед 1-м числом до воскресенья после конца
+    const startWeek = getWeekRange(monthStart).start;
+    const endWeek = getWeekRange(monthEnd).end;
+
+    const weeks = [];
+    for (let d = new Date(startWeek); d <= endWeek; d.setDate(d.getDate()+7)){
+      const weekStart = new Date(d);
+      weekStart.setHours(0,0,0,0);
+      const days = [];
+      for (let i=0;i<7;i++){
+        const day = new Date(weekStart);
+        day.setDate(weekStart.getDate()+i);
+        day.setHours(0,0,0,0);
+        days.push(day);
+      }
+      weeks.push(days);
+    }
+
+    const roleCols =
+      roleKey === "admin" ? 3 :
+      roleKey === "kellner" ? 4 :
+      roleKey === "kueche" ? 4 :
+      2;
+
+    const roleTitle =
+      roleKey === "admin" ? "Админы" :
+      roleKey === "kellner" ? "Официанты" :
+      roleKey === "kueche" ? "Кухня" :
+      "Уборка";
+
+    const times = getFixedTimes_();
+
+    // map: date|time -> rowObj
+    const map = new Map();
+    currentRows.forEach(r=>{
+      if (!r.date || !r.time) return;
+      map.set(`${r.date}|${r.time}`, r);
+    });
+
+    // grid columns: Zeit + 7*roleCols with separators
+    let gridCols = `70px `;
+    const cellMin = (roleCols === 4) ? 30 : (roleCols === 3) ? 40 : 48;
+    const sepW = 8;
+    for (let i=0;i<7;i++){
+      gridCols += `repeat(${roleCols}, minmax(${cellMin}px, 1fr)) `;
+      if (i !== 6) gridCols += `${sepW}px `;
+    }
+
+    let out = `<div class="month-role-title">${roleTitle} — ${formatMonthYear(range.start)}</div>`;
+
+    weeks.forEach((days, wIndex)=>{
+      out += `<div class="month-week-card">
+        <div class="month-week-head">Неделя ${formatDate(days[0])} — ${formatDate(days[6])}</div>
+        <div class="week-role-wrap">
+          <div class="week-role-grid" style="grid-template-columns:${gridCols.trim()};">
+      `;
+
+      // header
+      out += `<div class="week-role-head week-role-head--time">Zeit</div>`;
+      let colCursor = 2;
+      days.forEach((day, idx)=>{
+        const head = day.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
+        out += `<div class="week-role-head week-role-head--day" style="grid-column:${colCursor} / span ${roleCols};">${head}</div>`;
+        colCursor += roleCols;
+        if (idx !== 6){
+          out += `<div class="week-role-sep week-role-sep--head" style="grid-column:${colCursor};"></div>`;
+          colCursor += 1;
+        }
+      });
+
+      // body
+      times.forEach((time, tIndex)=>{
+        const gridRow = tIndex + 2;
+        out += `<div class="week-role-time" style="grid-row:${gridRow};grid-column:1;">${time}</div>`;
+        let col = 2;
+
+        days.forEach((day, dayIndex)=>{
+          const dateISO = toISODate_(day);
+          const inMonth = day >= monthStart && day <= monthEnd;
+
+          for (let slot=0; slot<roleCols; slot++){
+            const rowObj = (inMonth ? (map.get(`${dateISO}|${time}`) || null) : null);
+            const name = rowObj ? String(rowObj[roleKey]?.[slot] || "").trim() : "";
+
+            const prevTime = times[tIndex - 1] || null;
+            const nextTime = times[tIndex + 1] || null;
+            const prevRow = (inMonth && prevTime) ? (map.get(`${dateISO}|${prevTime}`) || null) : null;
+            const nextRow = (inMonth && nextTime) ? (map.get(`${dateISO}|${nextTime}`) || null) : null;
+
+            const prevName = prevRow ? String(prevRow[roleKey]?.[slot] || "").trim() : "";
+            const nextName = nextRow ? String(nextRow[roleKey]?.[slot] || "").trim() : "";
+
+            const isStart = !!name && name !== prevName;
+            let isEnd = !!name && name !== nextName;
+
+            if (name && !isStart){ col++; continue; }
+
+            const styleStr = name ? getPillStyleForName(name) : "";
+            const label = isStart ? shortName_(name) : "";
+
+            let blockSpan = 1;
+            let timeText = "";
+            let addOverlay = false;
+            let hideOverlay = false;
+
+            if (name && isStart){
+              let e = tIndex;
+              while (e < times.length - 1){
+                const nr = map.get(`${dateISO}|${times[e+1]}`) || null;
+                const nn = nr ? String(nr[roleKey]?.[slot] || "").trim() : "";
+                if (nn !== name) break;
+                e++;
+              }
+              blockSpan = e - tIndex + 1;
+              if (blockSpan > 1) isEnd = true;
+              if (blockSpan > 1){
+                timeText = `${timePretty_(times[tIndex])}–${timePretty_(times[e])}`;
+                addOverlay = true;
+                hideOverlay = blockSpan <= 2;
+              }
+            }
+
+            const clickable = rowObj ? "week-role-cell--click" : "week-role-cell--nocell";
+            const disabled = inMonth ? "" : " month-cell--out";
+            const rowsListAttr = (name && isStart && blockSpan > 1)
+              ? ` data-rows="${times.slice(tIndex, tIndex + blockSpan)
+                  .map(t => (map.get(`${dateISO}|${t}`) || {}).row)
+                  .filter(Boolean)
+                  .join(',')}"`
+              : "";
+
+            out += `
+              <div class="week-role-cell ${clickable}${disabled} ${name ? "week-role-cell--filled" : "week-role-cell--empty"} ${isStart ? "week-role-cell--start" : ""} ${isEnd ? "week-role-cell--end" : ""}"
+                   style="grid-row:${gridRow}${name && isStart ? ` / span ${blockSpan}` : ""};grid-column:${col};${styleStr}"
+                   ${rowObj ? `data-row="${rowObj.row}"` : ""}
+                   ${rowsListAttr}
+                   data-role="${roleKey}"
+                   data-slot="${slot}">
+                <span class="week-role-cell__label" title="${name}" data-full="${name}">${label}</span>
+                ${addOverlay ? `
+                  <span class="block-time-overlay" data-len="${blockSpan}" ${hideOverlay ? 'data-hide="1"' : ""}>
+                    <span class="block-time-vert">${timeText}</span>
+                  </span>
+                ` : ""}
+              </div>
+            `;
+            col++;
+          }
+
+          if (dayIndex !== 6){
+            out += `<div class="week-role-sep" style="grid-row:${gridRow};grid-column:${col};"></div>`;
+            col++;
+          }
+        });
+      });
+
+      out += `</div></div></div>`;
+    });
+
+    monthRoleViewEl.innerHTML = out;
+    applyDynamicLabels(monthRoleViewEl);
+  }
+
+// ===== NEW: Week Role Timeline (сплошные столбики на неделю для 1 роли) =====
   function renderWeekRoleTimeline(roleKey) {
   if (!weekCompactEl) return;
 
@@ -871,6 +1097,37 @@ return {
     return active ? (active.dataset.weekFilter || "all") : "all";
   }
 
+  // ===== MONTH FILTER helpers =====
+  function setMonthFilterVisible_(visible){
+    if (!monthFilterEl || !monthRoleViewEl) return;
+    monthFilterEl.style.display = visible ? "flex" : "none";
+    if (!visible){
+      monthRoleViewEl.style.display = "none";
+      monthRoleViewEl.innerHTML = "";
+      // сброс активной кнопки на "Все"
+      monthFilterEl.querySelectorAll("[data-month-filter]").forEach(btn=>{
+        btn.classList.toggle("week-filter__pill--active", btn.dataset.monthFilter === "all");
+      });
+    }
+  }
+  function getActiveMonthFilter_(){
+    if (!monthFilterEl) return "all";
+    const active = monthFilterEl.querySelector(".week-filter__pill--active");
+    return active ? (active.dataset.monthFilter || "all") : "all";
+  }
+
+  // MONTH FILTER clicks
+  if (monthFilterEl){
+    monthFilterEl.addEventListener("click", (e)=>{
+      const btn = e.target.closest("[data-month-filter]");
+      if (!btn) return;
+      monthFilterEl.querySelectorAll("[data-month-filter]").forEach(b=>b.classList.remove("week-filter__pill--active"));
+      btn.classList.add("week-filter__pill--active");
+      if (currentMode !== MODE_MONTH) return;
+      renderForCurrentPeriod();
+    });
+  }
+
   if (weekFilterEl) {
     weekFilterEl.querySelectorAll("[data-week-filter]").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -900,6 +1157,7 @@ return {
       subLabelEl.textContent = " ";
       scheduleContentEl.innerHTML = "<p style='color:#6b7280;font-weight:700;'>Нет данных.</p>";
       setWeekFilterVisible_(false);
+      setMonthFilterVisible_(false);
       return;
     }
 
@@ -910,16 +1168,19 @@ return {
       start = d; end = d;
       weekLabelEl.textContent = `День ${formatDate(d)} (${getWeekdayName(d)})`;
       setWeekFilterVisible_(false);
+      setMonthFilterVisible_(false);
     } else if (currentMode === MODE_WEEK) {
       const range = getWeekRange(currentDate);
       start = range.start; end = range.end;
       weekLabelEl.textContent = `Неделя ${formatDate(range.start)} — ${formatDate(range.end)}`;
       setWeekFilterVisible_(true);
+      setMonthFilterVisible_(false);
     } else {
       const range = getMonthRange(currentDate);
       start = range.start; end = range.end;
       weekLabelEl.textContent = `Месяц ${formatMonthYear(range.start)}`;
       setWeekFilterVisible_(false);
+      setMonthFilterVisible_(true);
     }
 
     const startMs = start.getTime();
@@ -956,8 +1217,21 @@ return {
 
     // MODE_MONTH
     if (weekCompactEl) { weekCompactEl.style.display = "none"; weekCompactEl.innerHTML = ""; }
-    scheduleContentEl.style.display = "";
-    renderTableView();
+
+    const mRole = getActiveMonthFilter_();
+
+    if (mRole === "all") {
+      // список всех дней месяца (каждый день как Day-столбики, все роли)
+      monthRoleViewEl.style.display = "none";
+      monthRoleViewEl.innerHTML = "";
+      scheduleContentEl.style.display = "";
+      renderMonthDayList("all");
+    } else {
+      // выбранная роль -> календарь по неделям (Пн–Вс) внутри этого месяца
+      scheduleContentEl.style.display = "none";
+      monthRoleViewEl.style.display = "block";
+      renderMonthRoleCalendar(mRole);
+    }
   }
 
   function setMode(mode) {
@@ -1204,6 +1478,19 @@ return {
     });
   }
 
+  // ✅ клики по month role calendar (недельные блоки в режиме "Месяц")
+  if (monthRoleViewEl) {
+    monthRoleViewEl.addEventListener("click", (e) => {
+      const cell = e.target.closest(".week-role-cell");
+      if (!cell) return;
+      // если это день вне месяца — не кликаем
+      if (cell.classList.contains("month-cell--out")) return;
+      const realRow = resolveRowFromSpannedCell_(cell, e.clientY);
+      if (!realRow) return;
+      openPicker(cell, realRow, cell.dataset.role, Number(cell.dataset.slot));
+    });
+  }
+
   // ============ stats ============
   function computeStatsForRange(start, end) {
     const startMs = start.getTime();
@@ -1403,7 +1690,34 @@ return {
   });
 
   // init
-  // init
+  // month filter UI mount
+  try{
+    // кнопки: Все / Админы / Официанты / Кухня / Уборка
+    monthFilterEl.innerHTML = `
+      <button class="week-filter__pill week-filter__pill--active" data-month-filter="all">Все</button>
+      <button class="week-filter__pill" data-month-filter="admin">Админы</button>
+      <button class="week-filter__pill" data-month-filter="kellner">Официанты</button>
+      <button class="week-filter__pill" data-month-filter="kueche">Кухня</button>
+      <button class="week-filter__pill" data-month-filter="reinigung">Уборка</button>
+    `;
+    // === FIX: корректно вставляем фильтр и month-role-view ===
+
+// 1. ФИЛЬТР ролей — СРАЗУ ПОД week-filter (как в режиме "Неделя")
+if (weekFilterEl) {
+  weekFilterEl.insertAdjacentElement("afterend", monthFilterEl);
+} else if (sectionSchedule && scheduleContentEl) {
+  sectionSchedule.insertBefore(monthFilterEl, scheduleContentEl);
+}
+
+// 2. Контейнер для "Месяц → по неделям → роль"
+//    ставим ПЕРЕД основным расписанием
+if (scheduleContentEl) {
+  scheduleContentEl.insertAdjacentElement("beforebegin", monthRoleViewEl);
+} else if (sectionSchedule) {
+  sectionSchedule.appendChild(monthRoleViewEl);
+}
+  }catch(e){ console.warn("month filter mount failed", e); }
+
   setLoading(true, "Загружаю расписание…");
 
   try {

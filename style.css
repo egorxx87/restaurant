@@ -990,3 +990,33 @@ body {
 .week-role-cell--filled.week-role-cell--start.week-role-cell--end{
   border-radius: 10px !important;
 }
+
+/* ===== MONTH role calendar (weeks) ===== */
+.month-blocks .week-day-card { border-radius: 16px; }
+
+.month-role-title{
+  font-weight: 900;
+  margin: 8px 0 12px;
+}
+
+.month-week-card{
+  background: #fff;
+  border: 1px solid #eef2f7;
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.month-week-head{
+  padding: 10px 14px;
+  font-weight: 900;
+  background: #f7f7f8;
+  border-bottom: 1px solid #eef2f7;
+}
+
+/* дни вне текущего месяца — бледные и некликабельные */
+.month-cell--out{
+  opacity: 0.25 !important;
+  cursor: default !important;
+  pointer-events: none !important;
+}
