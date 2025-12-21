@@ -25,92 +25,77 @@
       <div class="dashboard-grid">
 
         <!-- Черговий адміністратор -->
-        <div class="dashboard-module">
-          <div class="module-header">
-            <h2 class="module-title">Черговий адміністратор</h2>
-
-            <!-- Tabs: Today/Tomorrow -->
-            <!-- Tabs: Today/Tomorrow -->
-<div class="module-actions">
-  <button class="chip chip--active" id="duty-tab-today" type="button">Сьогодні</button>
-  <button class="chip" id="duty-tab-tomorrow" type="button">Завтра</button>
-</div>
-          </div>
-
-          <div class="module-content">
-            <div class="admin-info">
-              <div class="admin-avatar">👨‍💼</div>
-             <div class="admin-details duty-2col">
-  <div class="duty-col">
-    <div class="duty-title">Сьогодні</div>
-    <div class="admin-name" id="duty-admin-today">—</div>
+       <!-- Черговий адміністратор -->
+<div class="dashboard-module">
+  <div class="module-header">
+    <h2 class="module-title">Черговий адміністратор</h2>
   </div>
 
-  <div class="duty-col">
-    <div class="duty-title">Завтра</div>
-    <div class="admin-name" id="duty-admin-tomorrow">—</div>
+  <div class="module-content">
+    <div class="split-two">
+
+      <!-- СЬОГОДНІ -->
+      <div class="mini-card">
+        <div class="mini-title">Сьогодні</div>
+        <div class="mini-list" id="duty-admin-today">—</div>
+      </div>
+
+      <!-- ЗАВТРА -->
+      <div class="mini-card">
+        <div class="mini-title">Завтра</div>
+        <div class="mini-list" id="duty-admin-tomorrow">—</div>
+      </div>
+
+    </div>
+
+    <div class="module-note">
+      <em>Інформація завантажується…</em>
+    </div>
   </div>
 </div>
-            </div>
-
-            <div class="module-note">
-              <em>Інформація завантажується…</em>
-            </div>
-          </div>
-        </div>
 
         <!-- Резервації -->
-        <div class="dashboard-module">
-          <div class="module-header">
-            <h2 class="module-title">Резервації на сьогодні</h2>
-            <a href="reservation.html" class="module-link">Усі →</a>
-          </div>
-          <div class="module-content">
-            <div class="stats-grid">
-              <div class="stat-item">
-                <div class="stat-value">0</div>
-                <div class="stat-label">Усього</div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-value">0</div>
-                <div class="stat-label">Підтверджено</div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-value">0</div>
-                <div class="stat-label">Гостей</div>
-              </div>
-            </div>
-            <div class="module-note">
-              <em>Дані завантажуються…</em>
-            </div>
-          </div>
-        </div>
+       <div class="dashboard-module">
+  <div class="module-header">
+    <h2 class="module-title">Резервації</h2>
+  </div>
+
+  <div class="split-two">
+    <a class="mini-card" href="reservation.html?day=today">
+      <div class="mini-title">Сьогодні</div>
+      <div class="mini-value" id="res-today-guests">—</div>
+      <div class="mini-label">гостей (сума)</div>
+      <div class="mini-times" id="res-today-times">—</div>
+    </a>
+
+    <a class="mini-card" href="reservation.html?day=tomorrow">
+      <div class="mini-title">Завтра</div>
+      <div class="mini-value" id="res-tomorrow-guests">—</div>
+      <div class="mini-label">гостей (сума)</div>
+      <div class="mini-times" id="res-tomorrow-times">—</div>
+    </a>
+  </div>
+</div>
 
         <!-- Графік -->
-        <div class="dashboard-module">
-          <div class="module-header">
-            <h2 class="module-title">Графік на сьогодні</h2>
-            <a href="schedule.html" class="module-link">Увесь графік →</a>
-          </div>
-          <div class="module-content">
-            <div class="schedule-today">
-              <div class="role-section">
-                <div class="role-title">Kellner</div>
-                <div class="role-staff">—</div>
-              </div>
-              <div class="role-section">
-                <div class="role-title">Küche</div>
-                <div class="role-staff">—</div>
-              </div>
-              <div class="role-section">
-                <div class="role-title">Reinigung</div>
-                <div class="role-staff">—</div>
-              </div>
-            </div>
-          </div>
-        </div>
+     <div class="dashboard-module">
+  <div class="module-header">
+    <h2 class="module-title">Графік</h2>
+  </div>
 
-        <!-- Завдання -->
+  <div class="split-two">
+    <a class="mini-card" href="schedule.html?mode=day&day=today">
+      <div class="mini-title">Сьогодні</div>
+      <div class="mini-list" id="schedule-today">—</div>
+    </a>
+
+    <a class="mini-card" href="schedule.html?mode=day&day=tomorrow">
+      <div class="mini-title">Завтра</div>
+      <div class="mini-list" id="schedule-tomorrow">—</div>
+    </a>
+  </div>
+</div>
+ <!-- Завдання -->
         <div class="dashboard-module module-tasks">
           <div class="module-header">
             <h2 class="module-title">Вхідні завдання</h2>
