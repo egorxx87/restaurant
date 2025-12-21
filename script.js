@@ -1728,3 +1728,78 @@ if (scheduleContentEl) {
 
   loadScheduleForMonth(currentDate.getFullYear(), currentDate.getMonth() + 1);
 });
+/* ================================
+   ГЛАВНАЯ ПАНЕЛЬ: ДЕЖУРНЫЙ СЕГОДНЯ
+================================ */
+
+function renderTodayDutyAdmins() {
+  const nameEl = document.getElementById("duty-admin-name");
+  const timeEl = document.getElementById("duty-admin-time");
+  if (!nameEl || !timeEl) return;
+
+  const todayISO = toISODate_(new Date());
+
+  // берём только сегодня + только админы
+  const rows = allRows
+    .filter(r => r.date === todayISO)
+    .sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+
+  if (!rows.length) {
+    nameEl.textContent = "Немає чергового";
+    timeEl.textContent = "—";
+    return;
+  }
+
+  // name -> [times]
+  const map = {};
+
+  rows.forEach(r => {
+    r.admin.forEach(name => {
+      const n = (name || "").trim();
+      if (!n) return;
+      if (!map[n]) map[n] = [];
+      map[n].push(r.time);
+    });
+  });
+
+  if (!Object.keys(map).length) {
+    nameEl.textContent = "Немає чергового";
+    timeEl.textContent = "—";
+    return;
+  }
+
+  const lines = [];
+
+  Object.entries(map).forEach(([name, times]) => {
+    const intervals = [];
+
+    let start = times[0];
+    let prev = times[0];
+
+    for (let i = 1; i < times.length; i++) {
+      const cur = times[i];
+      if (parseInt(cur) === parseInt(prev) + 1) {
+        prev = cur;
+      } else {
+        intervals.push(`${start}–${prev}`);
+        start = cur;
+        prev = cur;
+      }
+    }
+    intervals.push(`${start}–${prev}`);
+
+    lines.push({
+      name,
+      text: intervals.join(", ")
+    });
+  });
+
+  // если один — красиво, если несколько — списком
+  if (lines.length === 1) {
+    nameEl.textContent = lines[0].name;
+    timeEl.textContent = lines[0].text;
+  } else {
+    nameEl.innerHTML = lines.map(l => `<strong>${l.name}</strong>`).join("<br>");
+    timeEl.innerHTML = lines.map(l => l.text).join("<br>");
+  }
+}

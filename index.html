@@ -12,9 +12,7 @@
   <div class="layout">
     <header class="header">
       <h1 class="header__title">Панель керування</h1>
-      <p class="header__subtitle">
-        Основні показники та швидкий доступ
-      </p>
+      <p class="header__subtitle">Основні показники та швидкий доступ</p>
     </header>
 
     <div class="top-nav">
@@ -26,25 +24,42 @@
     <main>
       <div class="dashboard-grid">
 
+        <!-- Черговий адміністратор -->
         <div class="dashboard-module">
           <div class="module-header">
             <h2 class="module-title">Черговий адміністратор</h2>
-            <span class="module-time">Сьогодні</span>
+
+            <!-- Tabs: Today/Tomorrow -->
+            <!-- Tabs: Today/Tomorrow -->
+<div class="module-actions">
+  <button class="chip chip--active" id="duty-tab-today" type="button">Сьогодні</button>
+  <button class="chip" id="duty-tab-tomorrow" type="button">Завтра</button>
+</div>
           </div>
+
           <div class="module-content">
             <div class="admin-info">
               <div class="admin-avatar">👨‍💼</div>
-              <div class="admin-details">
-                <div class="admin-name">—</div>
-                <div class="admin-contact">—</div>
-              </div>
+             <div class="admin-details duty-2col">
+  <div class="duty-col">
+    <div class="duty-title">Сьогодні</div>
+    <div class="admin-name" id="duty-admin-today">—</div>
+  </div>
+
+  <div class="duty-col">
+    <div class="duty-title">Завтра</div>
+    <div class="admin-name" id="duty-admin-tomorrow">—</div>
+  </div>
+</div>
             </div>
+
             <div class="module-note">
               <em>Інформація завантажується…</em>
             </div>
           </div>
         </div>
 
+        <!-- Резервації -->
         <div class="dashboard-module">
           <div class="module-header">
             <h2 class="module-title">Резервації на сьогодні</h2>
@@ -71,6 +86,7 @@
           </div>
         </div>
 
+        <!-- Графік -->
         <div class="dashboard-module">
           <div class="module-header">
             <h2 class="module-title">Графік на сьогодні</h2>
@@ -94,10 +110,11 @@
           </div>
         </div>
 
+        <!-- Завдання -->
         <div class="dashboard-module module-tasks">
           <div class="module-header">
             <h2 class="module-title">Вхідні завдання</h2>
-            <button class="module-btn">+ Додати</button>
+            <button class="module-btn" type="button">+ Додати</button>
           </div>
           <div class="module-content">
             <div class="task-list">
@@ -106,6 +123,7 @@
           </div>
         </div>
 
+        <!-- Події -->
         <div class="dashboard-module">
           <div class="module-header">
             <h2 class="module-title">Найближчі події</h2>
@@ -118,6 +136,7 @@
           </div>
         </div>
 
+        <!-- Швидкі дії -->
         <div class="dashboard-module module-actions">
           <div class="module-header">
             <h2 class="module-title">Швидкі дії</h2>
@@ -126,8 +145,8 @@
             <div class="action-buttons">
               <a href="reservation.html?add=new" class="action-btn">➕ Нова резервація</a>
               <a href="schedule.html?mode=day" class="action-btn">👥 Призначити зміну</a>
-              <button class="action-btn">📊 Статистика</button>
-              <button class="action-btn">📋 Звіт</button>
+              <button class="action-btn" type="button">📊 Статистика</button>
+              <button class="action-btn" type="button">📋 Звіт</button>
             </div>
           </div>
         </div>
@@ -140,5 +159,7 @@
     <div class="spinner"></div>
     <div id="global-loader-text" class="global-loader__text">Завантаження…</div>
   </div>
+
+  <script src="index.js"></script>
 </body>
 </html>

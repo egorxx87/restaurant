@@ -66,3 +66,28 @@
 .admin-info {
   display: flex;
   align
+}
+.duty-2col{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  width: 100%;
+}
+
+.duty-col{
+  min-width: 0;
+}
+
+.duty-title{
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #6b7280;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+/* на телефоне — столбиком */
+@media (max-width: 560px){
+  .duty-2col{ grid-template-columns: 1fr; }
+}
+#duty-tab-today, #duty-tab-tomorrow { display:none !important; }

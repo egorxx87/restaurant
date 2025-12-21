@@ -609,8 +609,10 @@ body {
 }
 
 .week-role-grid{
-  width: max-content;   /* чтобы сетка занимала нужную ширину */
-  min-width: 980px;     /* как было раньше — появится горизонтальный скролл */
+  display: grid;
+  width: max-content;
+  min-width: 980px;
+  grid-auto-rows: 30px;
 }
 .week-role-head{
   position: sticky;
