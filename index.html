@@ -19,92 +19,94 @@
       <a class="top-nav__btn top-nav__btn--active" href="index.html">Головна</a>
       <a class="top-nav__btn" href="schedule.html">Розклад</a>
       <a class="top-nav__btn" href="reservation.html">Резервації</a>
+      <a class="top-nav__btn" href="tasks.html">Завдання</a>
+
     </div>
 
     <main>
       <div class="dashboard-grid">
 
         <!-- Черговий адміністратор -->
-       <!-- Черговий адміністратор -->
-<div class="dashboard-module">
-  <div class="module-header">
-    <h2 class="module-title">Черговий адміністратор</h2>
-  </div>
+        <div class="dashboard-module">
+          <div class="module-header">
+            <h2 class="module-title">Черговий адміністратор</h2>
+          </div>
 
-  <div class="module-content">
-    <div class="split-two">
+          <div class="module-content">
+            <div class="split-two">
 
-      <!-- СЬОГОДНІ -->
-      <div class="mini-card">
-        <div class="mini-title">Сьогодні</div>
-        <div class="mini-list" id="duty-admin-today">—</div>
-      </div>
+              <!-- СЬОГОДНІ -->
+              <div class="mini-card">
+                <div class="mini-title">Сьогодні</div>
+                <div class="mini-list" id="duty-admin-today">—</div>
+              </div>
 
-      <!-- ЗАВТРА -->
-      <div class="mini-card">
-        <div class="mini-title">Завтра</div>
-        <div class="mini-list" id="duty-admin-tomorrow">—</div>
-      </div>
+              <!-- ЗАВТРА -->
+              <div class="mini-card">
+                <div class="mini-title">Завтра</div>
+                <div class="mini-list" id="duty-admin-tomorrow">—</div>
+              </div>
 
-    </div>
+            </div>
 
-    <div class="module-note">
-      <em>Інформація завантажується…</em>
-    </div>
-  </div>
-</div>
+            <div class="module-note">
+              <em>Інформація завантажується…</em>
+            </div>
+          </div>
+        </div>
 
         <!-- Резервації -->
-       <div class="dashboard-module">
-  <div class="module-header">
-    <h2 class="module-title">Резервації</h2>
-  </div>
+        <div class="dashboard-module">
+          <div class="module-header">
+            <h2 class="module-title">Резервації</h2>
+          </div>
 
-  <div class="split-two">
-    <a class="mini-card" href="reservation.html?day=today">
-      <div class="mini-title">Сьогодні</div>
-      <div class="mini-value" id="res-today-guests">—</div>
-      <div class="mini-label">гостей (сума)</div>
-      <div class="mini-times" id="res-today-times">—</div>
-    </a>
+          <div class="split-two">
+            <a class="mini-card" href="reservation.html?day=today">
+              <div class="mini-title">Сьогодні</div>
+              <div class="mini-value" id="res-today-guests">—</div>
+              <div class="mini-label">гостей (сума)</div>
+              <div class="mini-times" id="res-today-times">—</div>
+            </a>
 
-    <a class="mini-card" href="reservation.html?day=tomorrow">
-      <div class="mini-title">Завтра</div>
-      <div class="mini-value" id="res-tomorrow-guests">—</div>
-      <div class="mini-label">гостей (сума)</div>
-      <div class="mini-times" id="res-tomorrow-times">—</div>
-    </a>
-  </div>
-</div>
+            <a class="mini-card" href="reservation.html?day=tomorrow">
+              <div class="mini-title">Завтра</div>
+              <div class="mini-value" id="res-tomorrow-guests">—</div>
+              <div class="mini-label">гостей (сума)</div>
+              <div class="mini-times" id="res-tomorrow-times">—</div>
+            </a>
+          </div>
+        </div>
 
         <!-- Графік -->
-     <div class="dashboard-module">
-  <div class="module-header">
-    <h2 class="module-title">Графік</h2>
-  </div>
+        <div class="dashboard-module">
+          <div class="module-header">
+            <h2 class="module-title">Графік</h2>
+          </div>
 
-  <div class="split-two">
-    <a class="mini-card" href="schedule.html?mode=day&day=today">
-      <div class="mini-title">Сьогодні</div>
-      <div class="mini-list" id="schedule-today">—</div>
-    </a>
+          <div class="split-two">
+            <a class="mini-card" href="schedule.html?mode=day&day=today">
+              <div class="mini-title">Сьогодні</div>
+              <div class="mini-list" id="schedule-today">—</div>
+            </a>
 
-    <a class="mini-card" href="schedule.html?mode=day&day=tomorrow">
-      <div class="mini-title">Завтра</div>
-      <div class="mini-list" id="schedule-tomorrow">—</div>
-    </a>
-  </div>
-</div>
- <!-- Завдання -->
+            <a class="mini-card" href="schedule.html?mode=day&day=tomorrow">
+              <div class="mini-title">Завтра</div>
+              <div class="mini-list" id="schedule-tomorrow">—</div>
+            </a>
+          </div>
+        </div>
+
+        <!-- Завдання -->
         <div class="dashboard-module module-tasks">
           <div class="module-header">
             <h2 class="module-title">Вхідні завдання</h2>
-            <button class="module-btn" type="button">+ Додати</button>
+            <a class="module-btn" href="tasks.html">+ Додати</a>
           </div>
           <div class="module-content">
-            <div class="task-list">
-              <div class="task-empty">Немає активних завдань</div>
-            </div>
+           <div class="task-list" id="tasks-mini-list">
+  <div class="task-empty" id="tasks-mini-empty">Завантаження…</div>
+</div>
           </div>
         </div>
 

@@ -5,9 +5,12 @@ const SCHEDULE_API_URL =
   "https://script.google.com/macros/s/AKfycbw_uswtYYaimbBJytiHAdcwjbvv2rujyBt2Rrc9jlBHoYQ358F7vi8OvvQEhTptODNZ8g/exec";
 
 // ====== RESERVATIONS (same as reservation.html) ======
-// ВСТАВЬ сюда ПОЛНЫЙ URL из reservation.js (без "...")
 const RESERVATION_API_URL =
   "https://script.google.com/macros/s/AKfycbwNlMF6GEshtn2-5C1n-EsaCRkNZa2xPOQ2mA2zfdYvZyEIl3JSk4evG2NgkCMQaUdqaA/exec";
+
+// ====== TASKS ======
+const TASKS_API_URL =
+  "https://script.google.com/macros/s/AKfycbzKxxknHm2WBYLRzNOAWaK66VGvUZMbT5tPjpTR6j2J_uYh838LRI5Nk0a2H4DPIkkG/exec";
 
 // sheet columns count for admin duty (left block)
 const ADMIN_COLS = 3;
@@ -27,10 +30,13 @@ document.addEventListener("DOMContentLoaded", () => {
   // schedule today/tomorrow (NO admins, only Kellner/Küche/Reinigung)
   loadScheduleSummary(0);
   loadScheduleSummary(1);
+
+  // tasks mini list
+  loadTasksMini();
 });
 
 /* =========================
-   DUTY ADMINS (as you have)
+   DUTY ADMINS
 ========================= */
 
 async function loadDutyAdminsForOffset(dayOffset, targetId){
@@ -111,7 +117,6 @@ function hideDutyNote(){
 
 /* =========================
    RESERVATIONS (today/tomorrow)
-   shows: total guests + times list
 ========================= */
 
 async function loadReservationsSummary(dayOffset){
@@ -119,28 +124,24 @@ async function loadReservationsSummary(dayOffset){
   const timesEl  = document.getElementById(dayOffset === 0 ? "res-today-times"  : "res-tomorrow-times");
   if (!guestsEl || !timesEl) return;
 
-  // if url not set
-  if (!RESERVATION_API_URL || RESERVATION_API_URL.includes("PASTE_")) {
+  if (!RESERVATION_API_URL) {
     guestsEl.textContent = "—";
     timesEl.textContent = "Встав URL резервацій";
     return;
   }
 
   try {
-    // reservation API returns DDMMYYYY strings
     const target = addDays(new Date(), dayOffset);
     const ddmmyyyy = toDDMMYYYY(target);
 
-    // fastest: getByDate
     const res = await fetch(`${RESERVATION_API_URL}?action=getByDate&date=${encodeURIComponent(ddmmyyyy)}`);
     const json = await res.json();
     if (!json.ok) throw new Error(json.error || "Reservation load error");
 
     const data = Array.isArray(json.data) ? json.data : [];
 
-    // sum guests + group by time
     let totalGuests = 0;
-    const byTime = new Map(); // time -> guests sum
+    const byTime = new Map();
 
     for (const it of data){
       const t = String(it.time || "").trim();
@@ -151,7 +152,6 @@ async function loadReservationsSummary(dayOffset){
 
     guestsEl.textContent = String(totalGuests || 0);
 
-    // render times (top 6)
     const items = [...byTime.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
     if (!items.length) {
       timesEl.textContent = "Немає резервацій";
@@ -174,7 +174,7 @@ async function loadReservationsSummary(dayOffset){
 
 /* =========================
    SCHEDULE (today/tomorrow)
-   NO admins. Only Kellner/Küche/Reinigung with time intervals.
+   NO admins. Only roles
 ========================= */
 
 async function loadScheduleSummary(dayOffset){
@@ -204,7 +204,6 @@ async function loadScheduleSummary(dayOffset){
       .filter(r => r.date === targetISO && r.time)
       .sort((a,b) => a.time.localeCompare(b.time));
 
-    // build role maps name -> times
     const roleMaps = {
       Kellner: new Map(),
       "Küche": new Map(),
@@ -253,6 +252,74 @@ function renderRole(title, map){
 }
 
 /* =========================
+   TASKS mini on dashboard
+========================= */
+
+async function loadTasksMini(){
+  const list = document.getElementById("tasks-mini-list");
+  const empty = document.getElementById("tasks-mini-empty");
+  if (!list || !empty) return;
+
+  try {
+    // file:// → JSONP
+    const useJsonp = (location.protocol === "file:");
+    let json;
+
+    if (useJsonp) {
+      json = await jsonp(`${TASKS_API_URL}?action=tasks_list`);
+    } else {
+      const res = await fetch(`${TASKS_API_URL}?action=tasks_list`, { method: "GET" });
+      json = await res.json();
+    }
+
+    if (!json || !json.ok) throw new Error((json && json.error) ? json.error : "tasks_list error");
+
+    const data = Array.isArray(json.data) ? json.data : [];
+    const open = data.filter(t => (t.status || "open") === "open");
+
+    if (!open.length){
+      list.innerHTML = `<div class="task-empty">Немає активних завдань</div>`;
+      return;
+    }
+
+    open.sort((a,b) => {
+      const ap = (a.priority === "red") ? 0 : 1;
+      const bp = (b.priority === "red") ? 0 : 1;
+      if (ap !== bp) return ap - bp;
+      return String(b.createdAt||"").localeCompare(String(a.createdAt||""));
+    });
+
+    const top = open.slice(0, 3);
+    const more = open.length - top.length;
+
+    list.innerHTML =
+      top.map(t => {
+        const badgeClass = (t.priority === "red") ? "badge badge--red" : "badge badge--blue";
+        const prText = (t.priority === "red") ? "🔴 Срочно" : "🔵 Звичайно";
+        const due = (t.due && String(t.due).trim()) ? `⏳ ${escapeHtml(t.due)}` : "⏳ без строку";
+        const who = String(t.assignee || "").trim();
+
+        return `
+          <div class="task-row" style="padding:10px;">
+            <div class="task-left">
+              <div class="task-title" style="font-size:14px;">${escapeHtml(t.title || "")}</div>
+              <div class="task-meta" style="margin-top:6px;">
+                <span class="${badgeClass}">${prText}</span>
+                <span class="task-due">${due}</span>
+                ${who ? `<span class="task-due">👤 ${escapeHtml(who)}</span>` : ``}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("") +
+      (more > 0 ? `<div style="margin-top:8px;color:#6b7280;font-weight:700;">Ще +${more}…</div>` : "");
+  } catch (e){
+    console.error(e);
+    list.innerHTML = `<div class="task-empty">Помилка завантаження задач</div>`;
+  }
+}
+
+/* =========================
    Helpers
 ========================= */
 
@@ -288,8 +355,8 @@ function normalizeTime(raw){
   return s;
 }
 
-// ["09:00","10:00","11:00","21:00","22:00"] => ["09:00–11:00","21:00–22:00"]
 function buildIntervalsFromTimes(times){
+  if (!times || !times.length) return [];
   const res = [];
   let start = times[0];
   let prev  = times[0];
@@ -305,7 +372,6 @@ function buildIntervalsFromTimes(times){
   return res;
 }
 
-// JSONP for schedule (works from file://)
 function jsonp(url){
   return new Promise((resolve, reject) => {
     const cb = "cb_" + Math.random().toString(36).slice(2);
