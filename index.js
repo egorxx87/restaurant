@@ -1,4 +1,4 @@
-// index.js — dashboard (today + tomorrow)
+// index.js — dashboard (today + tomorrow + calendar events)
 
 // ====== SCHEDULE (same as schedule.html) ======
 const SCHEDULE_API_URL =
@@ -8,9 +8,13 @@ const SCHEDULE_API_URL =
 const RESERVATION_API_URL =
   "https://script.google.com/macros/s/AKfycbwNlMF6GEshtn2-5C1n-EsaCRkNZa2xPOQ2mA2zfdYvZyEIl3JSk4evG2NgkCMQaUdqaA/exec";
 
-// ====== TASKS ======
+// ====== TASKS + CALENDAR (gcal_events добавлен сюда) ======
 const TASKS_API_URL =
   "https://script.google.com/macros/s/AKfycbzKxxknHm2WBYLRzNOAWaK66VGvUZMbT5tPjpTR6j2J_uYh838LRI5Nk0a2H4DPIkkG/exec";
+
+// календарь берём из того же скрипта, где ты добавил action "gcal_events"
+const CALENDAR_API_URL =
+  "https://script.google.com/macros/s/AKfycbyQ4r7ZG3xdkyD30f0je-gFW2GZiQ4R7XApdN1R-tEc2WYy0md5TAz0-rTJd7M67P44Kw/exec";
 
 const ADMIN_COLS = 3;
 let _schedCache = null;
@@ -26,6 +30,9 @@ document.addEventListener("DOMContentLoaded", () => {
   loadScheduleSummary(1);
 
   loadTasksMini();
+
+  // ✅ события на главной: сегодня/завтра/неделя
+  initHomeEvents();
 });
 
 /* =========================
@@ -301,6 +308,81 @@ async function loadTasksMini(){
     console.error(e);
     list.innerHTML = `<div class="task-empty">Помилка завантаження задач</div>`;
   }
+}
+
+/* =========================
+   HOME EVENTS (Today / Tomorrow / Week)
+========================= */
+
+function initHomeEvents(){
+  const buttons = document.querySelectorAll(".btn-ev");
+  if (!buttons.length) return;
+
+  buttons.forEach(b => b.addEventListener("click", () => {
+    buttons.forEach(x => x.classList.remove("btn--active"));
+    b.classList.add("btn--active");
+    loadHomeEvents(b.dataset.range);
+  }));
+
+  loadHomeEvents("today");
+}
+
+async function loadHomeEvents(range){
+  const list = document.getElementById("eventsList");
+  if (!list) return;
+
+  list.textContent = "Завантаження…";
+
+  try{
+    const res = await fetch(CALENDAR_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action: "gcal_events", range })
+    });
+
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || "Помилка календаря");
+
+    const items = Array.isArray(json.events) ? json.events : [];
+    if (!items.length){
+      list.innerHTML = `<div style="color:#6b7280;font-weight:800;">Немає подій</div>`;
+      return;
+    }
+
+    list.innerHTML = items.map(renderEventRow_).join("");
+  } catch(e){
+    console.error(e);
+    list.innerHTML = `<div style="color:#b91c1c;font-weight:900;">Помилка: ${escapeHtml(e.message||String(e))}</div>`;
+  }
+}
+
+function renderEventRow_(e){
+  const title = escapeHtml(e.summary || "(без назви)");
+  const time = formatEventTime_(e);
+  const loc = e.location ? `<div class="event-meta">${escapeHtml(e.location)}</div>` : "";
+
+  return `
+    <div class="event-row">
+      <div class="event-time">${escapeHtml(time)}</div>
+      <div>
+        <div class="event-title">${title}</div>
+        ${loc}
+      </div>
+    </div>
+  `;
+}
+
+function formatEventTime_(e){
+  if (!e.start) return "";
+  const d = new Date(e.start);
+  const dd = String(d.getDate()).padStart(2,"0");
+  const mm = String(d.getMonth()+1).padStart(2,"0");
+
+  if (e.allDay) return `${dd}.${mm} (весь день)`;
+
+  const hh = String(d.getHours()).padStart(2,"0");
+  const mi = String(d.getMinutes()).padStart(2,"0");
+  return `${dd}.${mm} ${hh}:${mi}`;
 }
 
 /* =========================

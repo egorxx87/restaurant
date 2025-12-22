@@ -300,3 +300,116 @@
 .task-actions {
   flex: 0 0 auto;
 }
+/* ===== Calendar toolbar buttons (force styles) ===== */
+.calendar-toolbar{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center;
+  margin: 10px 0 14px;
+}
+
+.calendar-toolbar .btn{
+  -webkit-appearance: none;
+  appearance: none;
+  border: 0 !important;
+  background: #fff !important;
+  color: #111827 !important;
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 1px 10px rgba(0,0,0,.08);
+}
+
+.calendar-toolbar .btn:active{
+  transform: translateY(1px);
+}
+
+.calendar-toolbar .cal-title{
+  font-weight: 900;
+  min-width: 180px;
+  text-align: center;
+}
+
+.calendar-toolbar .cal-modes{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+
+.calendar-toolbar .btn-mode.btn--active{
+  background: #111827 !important;
+  color: #fff !important;
+}
+.events-toolbar{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+  margin-bottom: 10px;
+}
+
+.events-toolbar .btn{
+  -webkit-appearance:none;
+  appearance:none;
+  border:0 !important;
+  background:#fff !important;
+  border-radius:999px;
+  padding:8px 12px;
+  font-weight:900;
+  cursor:pointer;
+  box-shadow:0 1px 10px rgba(0,0,0,.08);
+}
+
+.events-toolbar .btn--active{
+  background:#111827 !important;
+  color:#fff !important;
+}
+
+.events-list{ display:grid; gap:10px; }
+
+.event-row{
+  display:grid;
+  grid-template-columns: 110px 1fr;
+  gap:10px;
+  padding:10px 12px;
+  border-radius:14px;
+  background:#fff;
+  box-shadow:0 1px 10px rgba(0,0,0,.06);
+}
+
+.event-time{ font-weight:900; white-space:nowrap; }
+.event-title{ font-weight:900; line-height:1.1; }
+.event-meta{ margin-top:2px; font-weight:800; color:#6b7280; font-size:12px; }
+/* ===== FIX: "Найближчі події" не ломает верстку на длинных названиях ===== */
+.events-list{
+  width: 100%;
+  min-width: 0;
+}
+
+.event-row{
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;              /* чтобы ничего не вылезало */
+  grid-template-columns: 95px 1fr; /* чуть компактнее время */
+  align-items: start;
+}
+
+/* ВАЖНО: разрешаем 2-й колонке сжиматься */
+.event-row > div{
+  min-width: 0;
+}
+
+.event-title{
+  white-space: normal;           /* переносим строки */
+  overflow-wrap: anywhere;       /* даже если длинное слово */
+  word-break: break-word;
+}
+
+.event-meta{
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}

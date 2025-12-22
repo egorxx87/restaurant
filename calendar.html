@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="robots" content="noindex, nofollow">
+  <title>Календар</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Общие стили проекта -->
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+
+  <div class="layout">
+
+    <!-- ===== HEADER ===== -->
+    <header class="header">
+      <h1 class="header__title">Календар</h1>
+      <p class="header__subtitle">Події з Google Calendar</p>
+    </header>
+
+    <!-- ===== NAVIGATION ===== -->
+    <div class="top-nav">
+      <a class="top-nav__btn" href="index.html">Головна</a>
+      <a class="top-nav__btn" href="schedule.html">Розклад</a>
+      <a class="top-nav__btn" href="reservation.html">Резервації</a>
+      <a class="top-nav__btn" href="tasks.html">Завдання</a>
+      <a class="top-nav__btn top-nav__btn--active" href="calendar.html">Календар</a>
+    </div>
+
+    <!-- ===== MAIN ===== -->
+    <main>
+
+      <!-- ===== CALENDAR TOOLBAR ===== -->
+      <div class="calendar-toolbar">
+        <button id="calToday" class="btn">Сьогодні</button>
+
+        <button id="calPrev" class="btn">‹</button>
+        <div id="calTitle" class="cal-title">—</div>
+        <button id="calNext" class="btn">›</button>
+
+        <div class="cal-modes">
+          <button class="btn btn-mode" data-mode="DAY">День</button>
+          <button class="btn btn-mode btn--active" data-mode="WEEK">Тиждень</button>
+          <button class="btn btn-mode" data-mode="MONTH">Місяць</button>
+        </div>
+      </div>
+
+      <!-- ===== GOOGLE CALENDAR IFRAME ===== -->
+      <div class="calendar-frame-wrap">
+        <iframe
+          id="gcal-iframe"
+          title="Google Calendar"
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+          style="
+            width: 100%;
+            height: 900px;
+            border: 0;
+            border-radius: 14px;
+            background: #fff;
+          ">
+        </iframe>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ===== GLOBAL LOADER (если используется в проекте) ===== -->
+  <div id="global-loader" class="global-loader global-loader--hidden">
+    <div class="spinner"></div>
+    <div id="global-loader-text" class="global-loader__text">Завантаження…</div>
+  </div>
+
+  <!-- ===== SCRIPT ===== -->
+  <script src="calendar.js"></script>
+
+</body>
+</html>

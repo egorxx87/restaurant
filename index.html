@@ -20,7 +20,7 @@
       <a class="top-nav__btn" href="schedule.html">Розклад</a>
       <a class="top-nav__btn" href="reservation.html">Резервації</a>
       <a class="top-nav__btn" href="tasks.html">Завдання</a>
-
+      <a class="top-nav__btn" href="calendar.html">Календар</a>
     </div>
 
     <main>
@@ -104,9 +104,9 @@
             <a class="module-btn" href="tasks.html">+ Додати</a>
           </div>
           <div class="module-content">
-           <div class="task-list" id="tasks-mini-list">
-  <div class="task-empty" id="tasks-mini-empty">Завантаження…</div>
-</div>
+            <div class="task-list" id="tasks-mini-list">
+              <div class="task-empty" id="tasks-mini-empty">Завантаження…</div>
+            </div>
           </div>
         </div>
 
@@ -114,12 +114,17 @@
         <div class="dashboard-module">
           <div class="module-header">
             <h2 class="module-title">Найближчі події</h2>
-            <span class="module-time">7 днів</span>
+            <a class="module-link" href="calendar.html">Календар</a>
           </div>
+
           <div class="module-content">
-            <div class="events-list">
-              <div class="event-empty">Немає запланованих подій</div>
+            <div class="events-toolbar">
+              <button class="btn btn-ev btn--active" data-range="today" type="button">Сьогодні</button>
+              <button class="btn btn-ev" data-range="tomorrow" type="button">Завтра</button>
+              <button class="btn btn-ev" data-range="week" type="button">Цього тижня</button>
             </div>
+
+            <div id="eventsList" class="events-list">Завантаження…</div>
           </div>
         </div>
 
