@@ -1203,3 +1203,51 @@ body {
     border-color: #111827;
   }
 }
+/* ===== MOBILE: компактные кнопки навигации ===== */
+@media (max-width: 640px) {
+
+  /* контейнер меню */
+  .nav, .nav-links, .top-nav {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    padding: 10px;
+    background: transparent;
+  }
+
+  /* сами кнопки */
+  .nav a, .nav-links a, .top-nav a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 10px 8px;
+    font-size: 14px;
+    font-weight: 700;
+
+    border-radius: 12px;
+    background: #f3f4f6;
+    color: #111827;
+
+    border: 1px solid #e5e7eb;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  /* активная кнопка */
+  .nav a.active,
+  .nav a[aria-current="page"],
+  .nav-links a.active,
+  .top-nav a.active {
+    background: #111827;
+    color: #ffffff;
+    border-color: #111827;
+  }
+
+  /* если кнопок нечётное количество (например Календар) */
+  .nav a:last-child,
+  .nav-links a:last-child,
+  .top-nav a:last-child {
+    grid-column: span 2;
+  }
+}
