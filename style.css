@@ -1156,3 +1156,50 @@ body {
     background:#fff !important;
   }
 }
+/* ===== MOBILE: красивое меню-пилюли в 1 строку со скроллом ===== */
+@media (max-width: 640px){
+  .nav, .nav-links, .top-nav, .tabs, .menu { /* если у тебя другой класс — ниже дам точечно */
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 10px 10px 12px;
+    margin: 0;
+    scrollbar-width: none;
+  }
+  .nav::-webkit-scrollbar,
+  .nav-links::-webkit-scrollbar,
+  .top-nav::-webkit-scrollbar,
+  .tabs::-webkit-scrollbar,
+  .menu::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav a, .nav-links a, .top-nav a, .tabs a, .menu a{
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 14px;
+    border-radius: 999px;
+    font-weight: 800;
+    font-size: 14px;
+    line-height: 1;
+    background: #eef0f3;
+    color: #111827;
+    border: 1px solid #e5e7eb;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .nav a.active, .nav a[aria-current="page"],
+  .nav-links a.active, .nav-links a[aria-current="page"],
+  .top-nav a.active, .top-nav a[aria-current="page"],
+  .tabs a.active, .tabs a[aria-current="page"],
+  .menu a.active, .menu a[aria-current="page"]{
+    background: #111827;
+    color: #fff;
+    border-color: #111827;
+  }
+}
