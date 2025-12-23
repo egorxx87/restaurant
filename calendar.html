@@ -1,282 +1,72 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="utf-8" />
-  <meta name="robots" content="noindex, nofollow" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8" />
+  <meta name="robots" content="noindex, nofollow">
   <title>Календар</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Roboto like Google -->
+  <!-- Стили сайта -->
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dashboard.css">
+<link rel="stylesheet" href="calendar.css">
+  <!-- Roboto (как у Google) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 
   <!-- FullCalendar -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css">
-
-  <style>
-    :root{
-      --g-bg: #f8f9fa;        /* google-ish page bg */
-      --g-panel: #ffffff;     /* white calendar surface */
-      --g-text: #202124;
-      --g-muted: #5f6368;
-      --g-line: #dadce0;
-      --g-hover: #f1f3f4;
-
-      --g-blue: #1a73e8;
-      --g-blueSoft: #e8f0fe;
-
-      --radius: 18px;
-      --shadow: 0 1px 2px rgba(60,64,67,.30), 0 1px 3px 1px rgba(60,64,67,.15);
-      --font: Roboto, system-ui, -apple-system, Segoe UI, Arial;
-    }
-
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family: var(--font);
-      background: var(--g-bg);
-      color: var(--g-text);
-    }
-
-    /* ====== ТВОЁ меню сайта сверху (оставь как на сайте) ======
-       Если у тебя уже есть свои стили topnav в style.css — можешь убрать этот блок */
-    .topnav{
-      display:flex; gap:10px; align-items:center;
-      background:#eef0f3; border-radius:999px; padding:8px; width:max-content;
-      margin:14px 12px 12px;
-    }
-    .topnav a{
-      text-decoration:none; color:var(--g-text);
-      padding:10px 14px; border-radius:999px; font-weight:600; font-size:14px;
-      opacity:.75;
-    }
-    .topnav a.active{background:#111827; color:#fff; opacity:1;}
-    /* ========================================================= */
-
-    .wrap{
-      max-width: 1500px;
-      margin: 0 auto;
-      padding: 0 12px 16px;
-    }
-
-    /* ===== Google-like header ===== */
-    .gbar{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap: 10px;
-      padding: 10px 12px;
-      margin: 0 0 12px;
-      background: transparent;
-    }
-
-    .g-left, .g-center, .g-right{
-      display:flex; align-items:center; gap:10px;
-      flex-wrap:wrap;
-    }
-
-    .gbtn{
-      height: 36px;
-      padding: 0 14px;
-      border-radius: 999px;
-      border: 1px solid var(--g-line);
-      background: #fff;
-      color: var(--g-text);
-      font-weight: 500;
-      cursor: pointer;
-      user-select:none;
-    }
-    .gbtn:hover{ background: var(--g-hover); }
-    .gbtn:active{ transform: translateY(1px); }
-
-    .gicon{
-      width: 36px;
-      padding: 0;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      font-size:18px;
-      line-height: 1;
-    }
-
-    .gtitle{
-      font-size: 22px;
-      font-weight: 500;
-      letter-spacing: .2px;
-      white-space: nowrap;
-    }
-
-    /* view dropdown (like Google "Тиждень ▾") */
-    .gselect{
-      height: 36px;
-      border: 1px solid var(--g-line);
-      border-radius: 999px;
-      background: #fff;
-      color: var(--g-text);
-      font-weight: 500;
-      padding: 0 12px;
-      cursor: pointer;
-      appearance: none;
-      -webkit-appearance: none;
-      position: relative;
-    }
-    .gselect-wrap{
-      position: relative;
-      display:inline-flex;
-      align-items:center;
-    }
-    .gselect-wrap:after{
-      content:"▾";
-      position:absolute;
-      right: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--g-muted);
-      pointer-events:none;
-      font-size: 12px;
-    }
-    .gselect{ padding-right: 30px; }
-    .gselect:hover{ background: var(--g-hover); }
-
-    /* Calendar surface */
-    .surface{
-      background: var(--g-panel);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      overflow: hidden;
-      position: relative;
-    }
-
-    /* little TZ label like "GMT+01" on the left */
-    .tzBadge{
-      position:absolute;
-      left: 12px;
-      top: 54px; /* near header row */
-      z-index: 5;
-      font-size: 12px;
-      color: var(--g-muted);
-      background: rgba(255,255,255,.85);
-      padding: 2px 6px;
-      border-radius: 8px;
-    }
-
-    #calendar{
-      min-height: 850px;
-      background:#fff;
-    }
-
-    /* ===== FullCalendar -> Google-ish look ===== */
-    .fc{
-      --fc-border-color: var(--g-line);
-      --fc-page-bg-color: #fff;
-      --fc-neutral-bg-color: #fff;
-      --fc-today-bg-color: rgba(26,115,232,.08);
-      --fc-now-indicator-color: #d93025;
-      font-family: var(--font);
-      color: var(--g-text);
-    }
-    .fc .fc-toolbar{ display:none; } /* use our header */
-
-    /* header row */
-    .fc .fc-col-header-cell{ background:#fff; }
-    .fc .fc-col-header-cell-cushion{
-      color: var(--g-muted);
-      font-weight: 500;
-      font-size: 12px;
-      padding: 12px 0;
-    }
-
-    /* time labels */
-    .fc .fc-timegrid-slot-label{
-      color: var(--g-muted);
-      font-size: 12px;
-      font-weight: 500;
-    }
-
-    /* grid lines thinner feeling */
-    .fc .fc-scrollgrid,
-    .fc .fc-scrollgrid-section > td{
-      border-color: var(--g-line);
-    }
-
-    /* events: pastel block like Google */
-    .fc .fc-event{
-      border: 0 !important;
-      border-radius: 8px !important;
-      padding: 4px 8px !important;
-      font-size: 12px !important;
-      line-height: 1.25 !important;
-      box-shadow: none !important;
-    }
-    .fc .fc-timegrid-event{ margin: 2px 6px !important; }
-    .fc .fc-daygrid-event{ margin: 2px 8px !important; }
-
-    .fc .fc-event-title,
-    .fc .fc-event-time{
-      font-weight: 500 !important;
-    }
-
-    /* make all-day area subtle */
-    .fc .fc-timegrid-axis-cushion,
-    .fc .fc-timegrid-slot-label-cushion{
-      padding-left: 10px;
-      padding-right: 10px;
-    }
-
-    @media (max-width: 620px){
-      .gtitle{ font-size: 18px; }
-      #calendar{ min-height: 720px; }
-      .tzBadge{ display:none; }
-    }
-  </style>
 </head>
 
 <body>
-  <!-- ТВОЯ навигация сайта -->
-  <nav class="topnav">
-    <a href="index.html">Головна</a>
-    <a href="schedule.html">Розклад</a>
-    <a href="reservation.html">Резервації</a>
-    <a href="tasks.html">Завдання</a>
-    <a class="active" href="calendar.html">Календар</a>
-  </nav>
+  <div class="layout">
+    <header class="header">
+      <h1 class="header__title">Календар</h1>
+      <p class="header__subtitle">Події з Google Calendar</p>
+    </header>
 
-  <div class="wrap">
-    <!-- Google-like calendar header -->
-    <div class="gbar">
-      <div class="g-left">
-        <button class="gbtn" id="calToday">Сьогодні</button>
-        <button class="gbtn gicon" id="calPrev" aria-label="Prev">‹</button>
-        <button class="gbtn gicon" id="calNext" aria-label="Next">›</button>
-      </div>
+    <!-- Навигация сайта (без изменений шрифта!) -->
+    <div class="top-nav">
+      <a class="top-nav__btn" href="index.html">Головна</a>
+      <a class="top-nav__btn" href="schedule.html">Розклад</a>
+      <a class="top-nav__btn" href="reservation.html">Резервації</a>
+      <a class="top-nav__btn" href="tasks.html">Завдання</a>
+      <a class="top-nav__btn top-nav__btn--active" href="calendar.html">Календар</a>
+    </div>
 
-      <div class="g-center">
-        <div class="gtitle" id="calTitle">—</div>
-      </div>
+    <main class="gcal-scope">
+      <div class="gcal-shell">
+        <!-- ❌ НЕТ "Сьогодні" / ❌ НЕТ "День" -->
+        <div class="gcal-bar">
+          <div class="gcal-left">
+            <button class="gbtn" id="calPrev" aria-label="Prev">‹</button>
+            <button class="gbtn" id="calNext" aria-label="Next">›</button>
+          </div>
 
-      <div class="g-right">
-        <div class="gselect-wrap">
-          <select class="gselect" id="viewSelect">
-            
-            <option value="WEEK" selected>Тиждень</option>
-            <option value="MONTH">Місяць</option>
-          </select>
+          <div class="gcal-center">
+            <div class="gcal-title" id="calTitle">—</div>
+          </div>
+
+          <div class="gcal-right">
+            <div class="gselect-wrap">
+              <select class="gselect" id="viewSelect">
+                <option value="WEEK" selected>Тиждень</option>
+                <option value="MONTH">Місяць</option>
+              </select>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
 
-    <div class="surface">
-      <div class="tzBadge" id="tzBadge">GMT+01</div>
-      <div id="calendar"></div>
-    </div>
+        <div id="calendar"></div>
+      </div>
+    </main>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/locales-all.global.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ical.js@1.5.0/build/ical.min.js"></script>
 
-  <!-- cache-bust -->
-  <script src="calendar.js?v=31"></script>
+  <script src="calendar.js?v=401"></script>
 </body>
 </html>

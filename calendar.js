@@ -1,60 +1,48 @@
-/************************************************
- * Google-like (FullCalendar) — Monday first ✅
- * Events from .ics via your Apps Script proxy ✅
- ************************************************/
-
-const ICS_URL =
+const ICS_PROXY =
   "https://script.google.com/macros/s/AKfycbx2ZDz7sugW-psw3kpx4GdaM-u9vdhjQUDGrlsR6YBsz_ZFPIQjcgHio2DAHiS7MBdn/exec";
 
-const TZ = "Europe/Vienna";
+// чтобы не было +1 час сюрпризов
+const CAL_TZ = "local";
 
-// UI
-const titleEl   = document.getElementById("calTitle");
-const btnToday  = document.getElementById("calToday");
-const btnPrev   = document.getElementById("calPrev");
-const btnNext   = document.getElementById("calNext");
-const viewSel   = document.getElementById("viewSelect");
-const tzBadge   = document.getElementById("tzBadge");
+const titleEl = document.getElementById("calTitle");
+const btnPrev = document.getElementById("calPrev");
+const btnNext = document.getElementById("calNext");
+const viewSel = document.getElementById("viewSelect");
 
-let currentMode = "WEEK";
-const modeToView = { DAY:"timeGridDay", WEEK:"timeGridWeek", MONTH:"dayGridMonth" };
+const modeToView = { WEEK: "timeGridWeek", MONTH: "dayGridMonth" };
 
-function fmtTitle(date, viewType){
-  // Google shows month name in title on week view too (e.g., "Грудень 2025")
-  // Сделаем: для MONTH — месяц+год, для WEEK/DAY — тоже месяц+год (как у тебя на скрине)
-  const opts = { month:"long", year:"numeric" };
-  return date.toLocaleDateString("ru-RU", opts).replace(/^\w/, c => c.toUpperCase());
-}
-
-function gmtBadgeForVienna(){
-  // простой вариант: выводим GMT+01/ GMT+02 по текущей дате (лето/зима)
-  const d = new Date();
-  const fmt = new Intl.DateTimeFormat("en-US", { timeZone: TZ, timeZoneName: "shortOffset" });
-  const part = fmt.formatToParts(d).find(p => p.type === "timeZoneName")?.value || "GMT+01";
-  return part.replace("GMT", "GMT");
+function titleLikeGoogle(date){
+  const s = date.toLocaleDateString("uk-UA", { month: "long", year: "numeric" });
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 async function fetchIcsText(){
-  const url = new URL(ICS_URL);
+  const url = new URL(ICS_PROXY);
   url.searchParams.set("_ts", String(Date.now()));
-  const res = await fetch(url.toString(), { cache:"no-store" });
+  const res = await fetch(url.toString(), { cache: "no-store" });
   if (!res.ok) throw new Error(`ICS fetch failed: ${res.status}`);
   return await res.text();
 }
 
-function pastelColorFromTitle(title){
-  // чтобы было ближе к Google: пастельная заливка + тёмный текст
-  // (стабильно по названию события)
+// стабильный цвет по названию -> используем как "точку" в месяце
+function dotColorFromTitle(title){
   const s = String(title || "").toLowerCase();
   let h = 0;
   for (let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) >>> 0;
   const hue = h % 360;
-  const bg = `hsl(${hue} 70% 85%)`;     // pastel
-  const text = `hsl(${hue} 60% 20%)`;   // readable dark
-  return { bg, text };
+  return `hsl(${hue} 55% 55%)`; // как google-ish dots
 }
 
-async function fetchIcsEvents(){
+// для WEEK оставляем пастельную плашку
+function pastelFromTitle(title){
+  const s = String(title || "").toLowerCase();
+  let h = 0;
+  for (let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) >>> 0;
+  const hue = h % 360;
+  return { bg: `hsl(${hue} 70% 86%)`, text: `hsl(${hue} 65% 18%)` };
+}
+
+async function fetchEventsFromIcs(){
   const text = await fetchIcsText();
   const jcal = ICAL.parse(text);
   const comp = new ICAL.Component(jcal);
@@ -67,32 +55,61 @@ async function fetchIcsEvents(){
     const start = ev.startDate.toJSDate();
     const end = ev.endDate ? ev.endDate.toJSDate() : new Date(start.getTime() + 30*60*1000);
 
-    const c = pastelColorFromTitle(title);
+    const dot = dotColorFromTitle(title);
+    const pastel = pastelFromTitle(title);
 
     events.push({
       title,
       start,
       end,
-      allDay: ev.startDate.isDate === true,
-      backgroundColor: c.bg,
-      borderColor: c.bg,
-      textColor: c.text
+      allDay: false,
+      // week style
+      backgroundColor: pastel.bg,
+      borderColor: pastel.bg,
+      textColor: pastel.text,
+      // month dot style via extendedProps
+      extendedProps: { dotColor: dot }
     });
   }
   return events;
+}
+
+function slotLabelContentUkAMPM(arg){
+  const h24 = arg.date.getHours();
+  const isAM = h24 < 12;
+  const h12 = ((h24 + 11) % 12) + 1;
+  return { html: `${h12}<span class="ampm">${isAM ? "дп" : "пп"}</span>` };
+}
+
+function dayHeaderContent(arg){
+  const d = arg.date;
+  const wd = d.toLocaleDateString("ru-RU", { weekday: "short" }).replace(".", "");
+  const day = d.getDate();
+  return { html: `<span style="color:#5f6368;font-weight:500;font-size:12px">${wd}, ${day}</span>` };
+}
+
+// ✅ "сейчас выбранный день" как у Google (синий кружок)
+function setSelectedDay(calendar){
+  const d = calendar.getDate(); // текущая дата фокуса (то, что выделяется)
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2,"0");
+  const day = String(d.getDate()).padStart(2,"0");
+  const iso = `${y}-${m}-${day}`;
+
+  document.querySelectorAll(".fc-daygrid-day").forEach(el => el.classList.remove("fc-day-selected"));
+  const cell = document.querySelector(`.fc-daygrid-day[data-date="${iso}"]`);
+  if (cell) cell.classList.add("fc-day-selected");
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   const el = document.getElementById("calendar");
   if (!el) return;
 
-  if (tzBadge) tzBadge.textContent = gmtBadgeForVienna();
-
   const calendar = new FullCalendar.Calendar(el, {
-    timeZone: TZ,
-    locale: "ru",              // чтобы дни/месяцы были как на твоём скрине
-    firstDay: 1,               // ✅ ПН всегда
-    initialView: modeToView[currentMode],
+    timeZone: CAL_TZ,
+    locale: "ru",
+    firstDay: 1,
+    initialView: modeToView.MONTH,   // как на твоём фото — месяц
     headerToolbar: false,
 
     nowIndicator: true,
@@ -101,58 +118,59 @@ document.addEventListener("DOMContentLoaded", () => {
     stickyHeaderDates: true,
     dayMaxEvents: true,
 
-    allDaySlot: true,
-    slotMinTime: "10:00:00",   // как на твоём скрине (можешь поменять)
+    allDaySlot: false,
+
+    slotMinTime: "10:00:00",
     slotMaxTime: "23:00:00",
     slotDuration: "00:30:00",
     slotLabelInterval: "01:00",
-    slotLabelFormat: { hour:"numeric", minute:"2-digit", hour12:false },
-    eventTimeFormat: { hour:"numeric", minute:"2-digit", hour12:false },
+    slotLabelContent: slotLabelContentUkAMPM,
+
     displayEventEnd: false,
 
     views: {
-      timeGridWeek: { dayHeaderFormat: { weekday:"short", day:"numeric" } },
-      timeGridDay:  { dayHeaderFormat: { weekday:"long", day:"numeric", month:"long" } },
-      dayGridMonth: { dayHeaderFormat: { weekday:"short" } }
+      timeGridWeek: { dayHeaderContent },
+      dayGridMonth: { dayHeaderFormat: { weekday: "short" } }
+    },
+
+    // month dot: прокидываем --dot-color в событие
+    eventDidMount: (info) => {
+      const dot = info.event.extendedProps?.dotColor;
+      if (dot && info.el) {
+        info.el.style.setProperty("--dot-color", dot);
+      }
     },
 
     events: async (_info, success) => {
-      try {
-        success(await fetchIcsEvents());
-      } catch (e) {
-        console.error("ICS ERROR:", e);
-        success([]);
-      }
+      try { success(await fetchEventsFromIcs()); }
+      catch (e) { console.error("ICS ERROR:", e); success([]); }
     },
 
     datesSet: (arg) => {
       const base = (arg.view.type === "dayGridMonth") ? arg.view.currentStart : calendar.getDate();
-      if (titleEl) titleEl.textContent = fmtTitle(base, arg.view.type);
+      if (titleEl) titleEl.textContent = titleLikeGoogle(base);
+      if (viewSel) viewSel.value = (arg.view.type === "dayGridMonth") ? "MONTH" : "WEEK";
 
-      // sync select with view
-      if (viewSel) {
-        const mode =
-          arg.view.type === "timeGridDay" ? "DAY" :
-          arg.view.type === "timeGridWeek" ? "WEEK" :
-          "MONTH";
-        viewSel.value = mode;
-        currentMode = mode;
-      }
+      // выделение выбранного дня
+      setTimeout(() => setSelectedDay(calendar), 0);
+    },
+
+    dateClick: () => {
+      // после клика — обновить выделение
+      setTimeout(() => setSelectedDay(calendar), 0);
     }
   });
 
   calendar.render();
+  setSelectedDay(calendar);
 
-  // header buttons
-  btnToday && (btnToday.onclick = () => calendar.today());
-  btnPrev  && (btnPrev.onclick  = () => calendar.prev());
-  btnNext  && (btnNext.onclick  = () => calendar.next());
+  if (btnPrev) btnPrev.onclick = () => { calendar.prev(); setTimeout(() => setSelectedDay(calendar), 0); };
+  if (btnNext) btnNext.onclick = () => { calendar.next(); setTimeout(() => setSelectedDay(calendar), 0); };
 
-  // view dropdown
   if (viewSel) {
     viewSel.onchange = () => {
-      currentMode = viewSel.value;
-      calendar.changeView(modeToView[currentMode]);
+      calendar.changeView(modeToView[viewSel.value]);
+      setTimeout(() => setSelectedDay(calendar), 0);
     };
   }
 });
