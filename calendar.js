@@ -1,7 +1,6 @@
 const ICS_PROXY =
   "https://script.google.com/macros/s/AKfycbx2ZDz7sugW-psw3kpx4GdaM-u9vdhjQUDGrlsR6YBsz_ZFPIQjcgHio2DAHiS7MBdn/exec";
 
-// чтобы не было +1 час сюрпризов
 const CAL_TZ = "local";
 
 const titleEl = document.getElementById("calTitle");
@@ -9,15 +8,16 @@ const btnPrev = document.getElementById("calPrev");
 const btnNext = document.getElementById("calNext");
 const viewSel = document.getElementById("viewSelect");
 
-// ✅ добавили DAY
 const modeToView = {
   DAY: "timeGridDay",
   WEEK: "timeGridWeek",
   MONTH: "dayGridMonth"
 };
 
-// телефон считаем <= 640px
-const isMobile = () => window.matchMedia("(max-width: 640px)").matches;
+// ✅ Надёжный "телефон": палец (coarse) ИЛИ ширина до 900px
+const isMobile = () =>
+  window.matchMedia("(pointer: coarse)").matches ||
+  window.matchMedia("(max-width: 900px)").matches;
 
 function titleLikeGoogle(date){
   const s = date.toLocaleDateString("uk-UA", { month: "long", year: "numeric" });
@@ -36,10 +36,8 @@ function dotColorFromTitle(title){
   const s = String(title || "").toLowerCase();
   let h = 0;
   for (let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) >>> 0;
-  const hue = h % 360;
-  return `hsl(${hue} 55% 55%)`;
+  return `hsl(${(h % 360)} 55% 55%)`;
 }
-
 function pastelFromTitle(title){
   const s = String(title || "").toLowerCase();
   let h = 0;
@@ -55,7 +53,7 @@ async function fetchEventsFromIcs(){
   const vevents = comp.getAllSubcomponents("vevent") || [];
 
   const events = [];
-  for (const ve of vevents){
+  for (const ve of vevents) {
     const ev = new ICAL.Event(ve);
     const title = ev.summary || "(Без назви)";
     const start = ev.startDate.toJSDate();
@@ -104,25 +102,19 @@ function setSelectedDay(calendar){
   if (cell) cell.classList.add("fc-day-selected");
 }
 
-// ✅ показываем DAY только на телефоне
-function syncViewSelectOptions(){
+// ✅ DAY показываем в селекте всегда, но:
+// - на десктопе нельзя выбрать DAY (и если выбрали — откатываем)
+function enforceMobileOnlyDay(calendar){
   if (!viewSel) return;
 
-  const hasDay = [...viewSel.options].some(o => o.value === "DAY");
+  const mobile = isMobile();
+  const dayOpt = [...viewSel.options].find(o => o.value === "DAY");
+  if (dayOpt) dayOpt.disabled = !mobile;   // на десктопе DAY серый/недоступен
 
-  if (isMobile()) {
-    // на телефоне DAY должен быть
-    if (!hasDay) {
-      const opt = document.createElement("option");
-      opt.value = "DAY";
-      opt.textContent = "День";
-      viewSel.insertBefore(opt, viewSel.firstChild);
-    }
-  } else {
-    // на десктопе DAY убираем
-    for (const o of [...viewSel.options]) {
-      if (o.value === "DAY") o.remove();
-    }
+  // если сейчас десктоп и вдруг стоит DAY — откат на WEEK
+  if (!mobile && viewSel.value === "DAY") {
+    viewSel.value = "WEEK";
+    calendar.changeView(modeToView.WEEK);
   }
 }
 
@@ -130,9 +122,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const el = document.getElementById("calendar");
   if (!el) return;
 
-  syncViewSelectOptions();
-
-  // старт: на телефоне DAY, на десктопе MONTH (как было у тебя)
   const initialMode = isMobile() ? "DAY" : "MONTH";
 
   const calendar = new FullCalendar.Calendar(el, {
@@ -179,16 +168,15 @@ document.addEventListener("DOMContentLoaded", () => {
       const base = (arg.view.type === "dayGridMonth") ? arg.view.currentStart : calendar.getDate();
       if (titleEl) titleEl.textContent = titleLikeGoogle(base);
 
-      syncViewSelectOptions();
       if (viewSel) {
         const mode =
           arg.view.type === "dayGridMonth" ? "MONTH" :
           arg.view.type === "timeGridDay" ? "DAY" :
           "WEEK";
-        // если DAY скрыт (десктоп) — не ставим его
-        if (mode !== "DAY" || isMobile()) viewSel.value = mode;
+        viewSel.value = mode;
       }
 
+      enforceMobileOnlyDay(calendar);
       setTimeout(() => setSelectedDay(calendar), 0);
     },
 
@@ -196,6 +184,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   calendar.render();
+  enforceMobileOnlyDay(calendar);
   setSelectedDay(calendar);
 
   if (btnPrev) btnPrev.onclick = () => { calendar.prev(); setTimeout(() => setSelectedDay(calendar), 0); };
@@ -204,21 +193,14 @@ document.addEventListener("DOMContentLoaded", () => {
   if (viewSel) {
     viewSel.onchange = () => {
       const mode = viewSel.value;
-      // защита: DAY только на телефоне
-      if (mode === "DAY" && !isMobile()) return;
+      if (mode === "DAY" && !isMobile()) return; // на десктопе нельзя
       calendar.changeView(modeToView[mode]);
+      enforceMobileOnlyDay(calendar);
       setTimeout(() => setSelectedDay(calendar), 0);
     };
   }
 
-  // если пользователь повернул телефон/изменил ширину
   window.addEventListener("resize", () => {
-    const v = calendar.view.type;
-    syncViewSelectOptions();
-
-    // если вышли из телефона на десктоп и был DAY — переключаем на WEEK
-    if (!isMobile() && v === "timeGridDay") {
-      calendar.changeView(modeToView.WEEK);
-    }
+    enforceMobileOnlyDay(calendar);
   });
 });
