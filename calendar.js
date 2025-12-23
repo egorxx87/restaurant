@@ -9,7 +9,15 @@ const btnPrev = document.getElementById("calPrev");
 const btnNext = document.getElementById("calNext");
 const viewSel = document.getElementById("viewSelect");
 
-const modeToView = { WEEK: "timeGridWeek", MONTH: "dayGridMonth" };
+// ✅ добавили DAY
+const modeToView = {
+  DAY: "timeGridDay",
+  WEEK: "timeGridWeek",
+  MONTH: "dayGridMonth"
+};
+
+// телефон считаем <= 640px
+const isMobile = () => window.matchMedia("(max-width: 640px)").matches;
 
 function titleLikeGoogle(date){
   const s = date.toLocaleDateString("uk-UA", { month: "long", year: "numeric" });
@@ -24,16 +32,14 @@ async function fetchIcsText(){
   return await res.text();
 }
 
-// стабильный цвет по названию -> используем как "точку" в месяце
 function dotColorFromTitle(title){
   const s = String(title || "").toLowerCase();
   let h = 0;
   for (let i=0;i<s.length;i++) h = (h*31 + s.charCodeAt(i)) >>> 0;
   const hue = h % 360;
-  return `hsl(${hue} 55% 55%)`; // как google-ish dots
+  return `hsl(${hue} 55% 55%)`;
 }
 
-// для WEEK оставляем пастельную плашку
 function pastelFromTitle(title){
   const s = String(title || "").toLowerCase();
   let h = 0;
@@ -63,11 +69,9 @@ async function fetchEventsFromIcs(){
       start,
       end,
       allDay: false,
-      // week style
       backgroundColor: pastel.bg,
       borderColor: pastel.bg,
       textColor: pastel.text,
-      // month dot style via extendedProps
       extendedProps: { dotColor: dot }
     });
   }
@@ -88,9 +92,8 @@ function dayHeaderContent(arg){
   return { html: `<span style="color:#5f6368;font-weight:500;font-size:12px">${wd}, ${day}</span>` };
 }
 
-// ✅ "сейчас выбранный день" как у Google (синий кружок)
 function setSelectedDay(calendar){
-  const d = calendar.getDate(); // текущая дата фокуса (то, что выделяется)
+  const d = calendar.getDate();
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2,"0");
   const day = String(d.getDate()).padStart(2,"0");
@@ -101,15 +104,43 @@ function setSelectedDay(calendar){
   if (cell) cell.classList.add("fc-day-selected");
 }
 
+// ✅ показываем DAY только на телефоне
+function syncViewSelectOptions(){
+  if (!viewSel) return;
+
+  const hasDay = [...viewSel.options].some(o => o.value === "DAY");
+
+  if (isMobile()) {
+    // на телефоне DAY должен быть
+    if (!hasDay) {
+      const opt = document.createElement("option");
+      opt.value = "DAY";
+      opt.textContent = "День";
+      viewSel.insertBefore(opt, viewSel.firstChild);
+    }
+  } else {
+    // на десктопе DAY убираем
+    for (const o of [...viewSel.options]) {
+      if (o.value === "DAY") o.remove();
+    }
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const el = document.getElementById("calendar");
   if (!el) return;
+
+  syncViewSelectOptions();
+
+  // старт: на телефоне DAY, на десктопе MONTH (как было у тебя)
+  const initialMode = isMobile() ? "DAY" : "MONTH";
 
   const calendar = new FullCalendar.Calendar(el, {
     timeZone: CAL_TZ,
     locale: "ru",
     firstDay: 1,
-    initialView: modeToView.MONTH,   // как на твоём фото — месяц
+
+    initialView: modeToView[initialMode],
     headerToolbar: false,
 
     nowIndicator: true,
@@ -129,16 +160,14 @@ document.addEventListener("DOMContentLoaded", () => {
     displayEventEnd: false,
 
     views: {
+      timeGridDay: { dayHeaderFormat: { weekday: "short", day: "numeric" } },
       timeGridWeek: { dayHeaderContent },
       dayGridMonth: { dayHeaderFormat: { weekday: "short" } }
     },
 
-    // month dot: прокидываем --dot-color в событие
     eventDidMount: (info) => {
       const dot = info.event.extendedProps?.dotColor;
-      if (dot && info.el) {
-        info.el.style.setProperty("--dot-color", dot);
-      }
+      if (dot && info.el) info.el.style.setProperty("--dot-color", dot);
     },
 
     events: async (_info, success) => {
@@ -149,16 +178,21 @@ document.addEventListener("DOMContentLoaded", () => {
     datesSet: (arg) => {
       const base = (arg.view.type === "dayGridMonth") ? arg.view.currentStart : calendar.getDate();
       if (titleEl) titleEl.textContent = titleLikeGoogle(base);
-      if (viewSel) viewSel.value = (arg.view.type === "dayGridMonth") ? "MONTH" : "WEEK";
 
-      // выделение выбранного дня
+      syncViewSelectOptions();
+      if (viewSel) {
+        const mode =
+          arg.view.type === "dayGridMonth" ? "MONTH" :
+          arg.view.type === "timeGridDay" ? "DAY" :
+          "WEEK";
+        // если DAY скрыт (десктоп) — не ставим его
+        if (mode !== "DAY" || isMobile()) viewSel.value = mode;
+      }
+
       setTimeout(() => setSelectedDay(calendar), 0);
     },
 
-    dateClick: () => {
-      // после клика — обновить выделение
-      setTimeout(() => setSelectedDay(calendar), 0);
-    }
+    dateClick: () => setTimeout(() => setSelectedDay(calendar), 0)
   });
 
   calendar.render();
@@ -169,8 +203,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (viewSel) {
     viewSel.onchange = () => {
-      calendar.changeView(modeToView[viewSel.value]);
+      const mode = viewSel.value;
+      // защита: DAY только на телефоне
+      if (mode === "DAY" && !isMobile()) return;
+      calendar.changeView(modeToView[mode]);
       setTimeout(() => setSelectedDay(calendar), 0);
     };
   }
+
+  // если пользователь повернул телефон/изменил ширину
+  window.addEventListener("resize", () => {
+    const v = calendar.view.type;
+    syncViewSelectOptions();
+
+    // если вышли из телефона на десктоп и был DAY — переключаем на WEEK
+    if (!isMobile() && v === "timeGridDay") {
+      calendar.changeView(modeToView.WEEK);
+    }
+  });
 });
