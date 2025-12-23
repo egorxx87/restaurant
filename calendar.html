@@ -1,80 +1,140 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="uk">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="robots" content="noindex, nofollow">
-  <title>Календар</title>
+  <meta charset="utf-8" />
+  <meta name="robots" content="noindex, nofollow" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Календар</title>
 
-  <!-- Общие стили проекта -->
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="dashboard.css">
+  <!-- FullCalendar -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css">
+
+  <style>
+    :root{
+      --bg:#f5f6f8;
+      --card:#fff;
+      --text:#0f172a;
+      --muted:#64748b;
+      --line:#e5e7eb;
+      --btn:#ffffff;
+      --btnActive:#0f172a;
+      --btnActiveText:#fff;
+      --shadow: 0 10px 30px rgba(15,23,42,.08);
+      --radius: 18px;
+    }
+
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:var(--bg); color:var(--text);}
+    .wrap{max-width:1100px;margin:0 auto;padding:22px 14px 30px;}
+
+    h1{margin:6px 0 6px;font-size:40px;letter-spacing:-.02em;}
+    .sub{color:var(--muted); margin-bottom:16px;}
+
+    .topnav{
+      display:flex; gap:10px; align-items:center;
+      background:#eef0f3; border-radius:999px; padding:8px; width:max-content;
+      margin:14px 0 18px;
+    }
+    .topnav a{
+      text-decoration:none; color:var(--text);
+      padding:10px 14px; border-radius:999px; font-weight:600; font-size:14px;
+      opacity:.75;
+    }
+    .topnav a.active{background:#111827; color:#fff; opacity:1;}
+
+    .bar{
+      display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;
+      margin:10px 0 14px;
+    }
+    .left, .right{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+    .pill{
+      background:var(--btn); border:1px solid var(--line);
+      padding:10px 14px; border-radius:999px;
+      font-weight:700; cursor:pointer; box-shadow:0 1px 0 rgba(0,0,0,.03);
+      user-select:none;
+    }
+    .pill:active{transform:translateY(1px);}
+
+    .title{
+      font-weight:800; font-size:20px; letter-spacing:-.01em;
+      padding:10px 4px;
+      min-width:220px;
+      text-align:center;
+    }
+
+    .mode{
+      display:flex; gap:10px; align-items:center;
+    }
+    .btn-mode{
+      background:var(--btn); border:1px solid var(--line);
+      padding:10px 14px; border-radius:999px;
+      font-weight:800; cursor:pointer;
+    }
+    .btn--active{
+      background:var(--btnActive); color:var(--btnActiveText); border-color:transparent;
+    }
+
+    .card{
+      background:var(--card);
+      border:1px solid rgba(15,23,42,.06);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+
+    /* FullCalendar tweaks */
+    .fc{ --fc-border-color: rgba(15,23,42,.10); --fc-page-bg-color: transparent; }
+    .fc .fc-scrollgrid{ border-radius:var(--radius); overflow:hidden; }
+    .fc .fc-toolbar{ display:none; } /* мы делаем свой тулбар */
+    .fc .fc-timegrid-slot-label{ color:var(--muted); font-weight:700; }
+    .fc .fc-col-header-cell-cushion{ color:var(--muted); font-weight:800; text-transform:uppercase; font-size:12px; letter-spacing:.06em; }
+    .fc .fc-daygrid-day-number{ color:var(--muted); font-weight:800; }
+
+    @media (max-width: 520px){
+      h1{font-size:34px;}
+      .title{min-width:auto; text-align:left;}
+      .bar{gap:8px;}
+      .pill, .btn-mode{padding:10px 12px;}
+    }
+  </style>
 </head>
 <body>
+  <div class="wrap">
+    <h1>Календар</h1>
+    <div class="sub">Події з Google Calendar (неділя починається з <b>ПН</b>)</div>
 
-  <div class="layout">
+    <nav class="topnav">
+      <a href="index.html">Головна</a>
+      <a href="schedule.html">Розклад</a>
+      <a href="reservation.html">Резервації</a>
+      <a href="tasks.html">Завдання</a>
+      <a class="active" href="calendar.html">Календар</a>
+    </nav>
 
-    <!-- ===== HEADER ===== -->
-    <header class="header">
-      <h1 class="header__title">Календар</h1>
-      <p class="header__subtitle">Події з Google Calendar</p>
-    </header>
+    <div class="bar">
+      <div class="left">
+        <button class="pill" id="calToday">Сьогодні</button>
+        <button class="pill" id="calPrev">‹</button>
+        <div class="title" id="calTitle">—</div>
+        <button class="pill" id="calNext">›</button>
+      </div>
 
-    <!-- ===== NAVIGATION ===== -->
-    <div class="top-nav">
-      <a class="top-nav__btn" href="index.html">Головна</a>
-      <a class="top-nav__btn" href="schedule.html">Розклад</a>
-      <a class="top-nav__btn" href="reservation.html">Резервації</a>
-      <a class="top-nav__btn" href="tasks.html">Завдання</a>
-      <a class="top-nav__btn top-nav__btn--active" href="calendar.html">Календар</a>
+      <div class="right mode">
+        <button class="btn-mode" data-mode="DAY">День</button>
+        <button class="btn-mode btn--active" data-mode="WEEK">Тиждень</button>
+        <button class="btn-mode" data-mode="MONTH">Місяць</button>
+      </div>
     </div>
 
-    <!-- ===== MAIN ===== -->
-    <main>
-
-      <!-- ===== CALENDAR TOOLBAR ===== -->
-      <div class="calendar-toolbar">
-        <button id="calToday" class="btn">Сьогодні</button>
-
-        <button id="calPrev" class="btn">‹</button>
-        <div id="calTitle" class="cal-title">—</div>
-        <button id="calNext" class="btn">›</button>
-
-        <div class="cal-modes">
-          <button class="btn btn-mode" data-mode="DAY">День</button>
-          <button class="btn btn-mode btn--active" data-mode="WEEK">Тиждень</button>
-          <button class="btn btn-mode" data-mode="MONTH">Місяць</button>
-        </div>
-      </div>
-
-      <!-- ===== GOOGLE CALENDAR IFRAME ===== -->
-      <div class="calendar-frame-wrap">
-        <iframe
-          id="gcal-iframe"
-          title="Google Calendar"
-          loading="lazy"
-          referrerpolicy="no-referrer-when-downgrade"
-          style="
-            width: 100%;
-            height: 900px;
-            border: 0;
-            border-radius: 14px;
-            background: #fff;
-          ">
-        </iframe>
-      </div>
-
-    </main>
+    <div class="card">
+      <div id="calendar"></div>
+    </div>
   </div>
 
-  <!-- ===== GLOBAL LOADER (если используется в проекте) ===== -->
-  <div id="global-loader" class="global-loader global-loader--hidden">
-    <div class="spinner"></div>
-    <div id="global-loader-text" class="global-loader__text">Завантаження…</div>
-  </div>
+  <!-- FullCalendar + ical.js -->
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/locales-all.global.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ical.js@1.5.0/build/ical.min.js"></script>
 
-  <!-- ===== SCRIPT ===== -->
   <script src="calendar.js"></script>
-
 </body>
 </html>
