@@ -1,133 +1,113 @@
 /************************************************
- * Google Calendar — iframe controller
- * Режимы: День / Тиждень / Місяць
- * Навигация: Сегодня / ← →
+ * Site Calendar (FullCalendar) — Monday first ✅
+ * Source: public Google Calendar .ics
  ************************************************/
 
-/**
- * ВАЖНО:
- * Это src из Google Calendar → Integrate calendar → Embed code
- * ВСТАВЛЕН УЖЕ ТВОЙ URL
- */
-const BASE_EMBED_URL =
-  "https://calendar.google.com/calendar/embed?src=6742dec31885f193eab81207d89631f07d394186e0f23e140d66b6de4746da39%40group.calendar.google.com&ctz=Europe%2FVienna";
+const ICS_URL =
+  "https://calendar.google.com/calendar/ical/6742dec31885f193eab81207d89631f07d394186e0f23e140d66b6de4746da39%40group.calendar.google.com/public/basic.ics";
 
-// ====== STATE ======
-let currentDate = new Date();
-let currentMode = "WEEK"; // DAY | WEEK | MONTH
+const TZ = "Europe/Vienna";
 
-// ====== ELEMENTS ======
-const iframe = document.getElementById("gcal-iframe");
+// ====== UI ======
 const titleEl = document.getElementById("calTitle");
 const btnToday = document.getElementById("calToday");
 const btnPrev = document.getElementById("calPrev");
 const btnNext = document.getElementById("calNext");
 const modeButtons = document.querySelectorAll(".btn-mode");
 
-// ====== EVENTS ======
-if (btnToday) {
-  btnToday.addEventListener("click", () => {
-    currentDate = new Date();
-    updateCalendar();
-  });
-}
+let currentMode = "WEEK"; // DAY | WEEK | MONTH
 
-if (btnPrev) {
-  btnPrev.addEventListener("click", () => {
-    shiftDate(-1);
-    updateCalendar();
-  });
-}
+const modeToView = {
+  DAY: "timeGridDay",
+  WEEK: "timeGridWeek",
+  MONTH: "dayGridMonth"
+};
 
-if (btnNext) {
-  btnNext.addEventListener("click", () => {
-    shiftDate(1);
-    updateCalendar();
-  });
-}
-
-modeButtons.forEach(btn => {
-  btn.addEventListener("click", () => {
-    currentMode = btn.dataset.mode;
-    setActiveModeButton();
-    updateCalendar();
-  });
-});
-
-// ====== FUNCTIONS ======
-
-function shiftDate(direction) {
-  const d = new Date(currentDate);
-
-  if (currentMode === "DAY") {
-    d.setDate(d.getDate() + direction);
-  } else if (currentMode === "WEEK") {
-    d.setDate(d.getDate() + direction * 7);
-  } else if (currentMode === "MONTH") {
-    d.setMonth(d.getMonth() + direction);
-  }
-
-  currentDate = d;
-}
-
-function updateCalendar() {
-  updateTitle();
-  const src = buildIframeSrc();
-  if (iframe && src) {
-    iframe.src = src;
-  }
-}
-
-function buildIframeSrc() {
-  if (!BASE_EMBED_URL) return "";
-
-  const url = new URL(BASE_EMBED_URL);
-
-  // Режим отображения
-  url.searchParams.set("mode", currentMode);
-
-  // Дата (Google требует формат YYYYMMDD/YYYYMMDD)
-  const dateStr = formatYMD(currentDate);
-  url.searchParams.set("dates", `${dateStr}/${dateStr}`);
-
-  // Скрываем лишнее (чистый вид)
-  url.searchParams.set("showTitle", "0");
-  url.searchParams.set("showNav", "0");
-  url.searchParams.set("showDate", "0");
-  url.searchParams.set("showPrint", "0");
-  url.searchParams.set("showTabs", "0");
-  url.searchParams.set("showCalendars", "0");
-
-  return url.toString();
-}
-
-function updateTitle() {
-  if (!titleEl) return;
-
-  let options;
-
-  if (currentMode === "MONTH") {
-    options = { month: "long", year: "numeric" };
-  } else {
-    options = { day: "2-digit", month: "long", year: "numeric" };
-  }
-
-  titleEl.textContent = currentDate.toLocaleDateString("uk-UA", options);
-}
-
-function setActiveModeButton() {
-  modeButtons.forEach(btn => {
+function setActiveModeButton(){
+  modeButtons.forEach(btn=>{
     btn.classList.toggle("btn--active", btn.dataset.mode === currentMode);
   });
 }
 
-function formatYMD(date) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${y}${m}${d}`;
+function fmtTitle(date, viewType){
+  const isMonth = viewType === "dayGridMonth";
+  const opts = isMonth
+    ? { month: "long", year: "numeric" }
+    : { day: "2-digit", month: "long", year: "numeric" };
+  return date.toLocaleDateString("uk-UA", opts);
+}
+
+// ====== ICS loader ======
+async function fetchIcsEvents(info){
+  const res = await fetch(ICS_URL, { cache: "no-store" });
+  const text = await res.text();
+
+  const jcal = ICAL.parse(text);
+  const comp = new ICAL.Component(jcal);
+  const vevents = comp.getAllSubcomponents("vevent") || [];
+
+  const events = [];
+  for (const ve of vevents){
+    const ev = new ICAL.Event(ve);
+    const start = ev.startDate.toJSDate();
+    const end = ev.endDate
+      ? ev.endDate.toJSDate()
+      : new Date(start.getTime() + 30 * 60 * 1000);
+
+    events.push({
+      title: ev.summary || "(Без назви)",
+      start,
+      end,
+      allDay: ev.startDate.isDate === true
+    });
+  }
+  return events;
 }
 
 // ====== INIT ======
-setActiveModeButton();
-updateCalendar();
+document.addEventListener("DOMContentLoaded", () => {
+  const el = document.getElementById("calendar");
+
+  const calendar = new FullCalendar.Calendar(el, {
+    timeZone: TZ,
+    locale: "uk",
+    firstDay: 1, // ✅ ПОНЕДІЛОК
+    initialView: modeToView[currentMode],
+    nowIndicator: true,
+    height: "auto",
+    headerToolbar: false,
+
+    events: async (info, success) => {
+      try {
+        success(await fetchIcsEvents(info));
+      } catch (e) {
+        console.error(e);
+        success([]);
+      }
+    },
+
+    datesSet: (arg) => {
+      const base =
+        arg.view.type === "dayGridMonth"
+          ? arg.view.currentStart
+          : calendar.getDate();
+      titleEl.textContent = fmtTitle(base, arg.view.type);
+    }
+  });
+
+  calendar.render();
+
+  btnToday.onclick = () => calendar.today();
+  btnPrev.onclick = () => calendar.prev();
+  btnNext.onclick = () => calendar.next();
+
+  modeButtons.forEach(btn => {
+    btn.onclick = () => {
+      currentMode = btn.dataset.mode;
+      setActiveModeButton();
+      calendar.changeView(modeToView[currentMode]);
+    };
+  });
+
+  setActiveModeButton();
+});
