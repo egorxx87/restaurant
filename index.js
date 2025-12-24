@@ -122,6 +122,8 @@ function hideDutyNote(){
 async function loadReservationsSummary(dayOffset){
   const guestsEl = document.getElementById(dayOffset === 0 ? "res-today-guests" : "res-tomorrow-guests");
   const timesEl  = document.getElementById(dayOffset === 0 ? "res-today-times"  : "res-tomorrow-times");
+  const breakdownEl = document.getElementById(dayOffset === 0 ? "res-today-breakdown" : "res-tomorrow-breakdown");
+  const cancelledEl = document.getElementById(dayOffset === 0 ? "res-today-cancelled" : "res-tomorrow-cancelled");
   if (!guestsEl || !timesEl) return;
 
   try {
@@ -132,19 +134,53 @@ async function loadReservationsSummary(dayOffset){
     const json = await res.json();
     if (!json.ok) throw new Error(json.error || "Reservation load error");
 
-    const data = Array.isArray(json.data) ? json.data : [];
+    const dataRaw = Array.isArray(json.data) ? json.data : [];
+
+    // ❌ Cancelled не считаем в сумме, но показываем отдельной строкой
+    const isCancelled = (it) => {
+      const st = String(it && it.status ? it.status : "").toLowerCase();
+      return !!(it && it.cancelled) || st === "cancelled" || st === "canceled";
+    };
+
+    const data = dataRaw.filter(it => !isCancelled(it));
+    const cancelledCount = dataRaw.length - data.length;
+
+    // split manual/quandoo
+    const isQuandoo = (it) => String(it && it.source ? it.source : "").toLowerCase() === "quandoo";
+    const quandooRows = data.filter(isQuandoo);
+    const manualRows  = data.filter(it => !isQuandoo(it));
 
     let totalGuests = 0;
+    let manualGuests = 0;
+    let quandooGuests = 0;
+    let manualCount = manualRows.length;
+    let quandooCount = quandooRows.length;
+
     const byTime = new Map();
 
     for (const it of data){
       const t = String(it.time || "").trim();
       const g = parseInt(String(it.guests || "0").replace(/[^\d]/g,""), 10) || 0;
-      if (g) totalGuests += g;
+      totalGuests += g;
+      if (isQuandoo(it)) quandooGuests += g; else manualGuests += g;
       if (t) byTime.set(t, (byTime.get(t) || 0) + g);
     }
 
     guestsEl.textContent = String(totalGuests || 0);
+
+    if (breakdownEl) {
+      breakdownEl.textContent = `резервації: ${manualCount} ручн. / ${quandooCount} Quandoo · гості: ${manualGuests} / ${quandooGuests}`;
+    }
+
+    if (cancelledEl) {
+      if (cancelledCount > 0) {
+        cancelledEl.style.display = "block";
+        cancelledEl.textContent = `скасовано: ${cancelledCount}`;
+      } else {
+        cancelledEl.style.display = "none";
+        cancelledEl.textContent = "";
+      }
+    }
 
     const items = [...byTime.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
     if (!items.length) {
@@ -152,12 +188,10 @@ async function loadReservationsSummary(dayOffset){
       return;
     }
 
-    const top = items.slice(0, 6);
-    const more = items.length - top.length;
-
-    timesEl.innerHTML =
-      top.map(([t,g]) => `<div class="t"><span>${escapeHtml(t)}</span><span>${g} гостей</span></div>`).join("") +
-      (more > 0 ? `<div style="margin-top:6px;color:#6b7280;">ще +${more}</div>` : "");
+    // показываем ВСЕ времена (как ты просил)
+    timesEl.innerHTML = items
+      .map(([t,g]) => `<div class="t"><span>${escapeHtml(t)}</span><span>${g} гостей</span></div>`)
+      .join("");
 
   } catch (e) {
     console.error(e);
