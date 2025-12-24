@@ -119,12 +119,22 @@ function hideDutyNote(){
    RESERVATIONS (today/tomorrow)
 ========================= */
 
+const _resExpanded = { 0:false, 1:false }; // dashboard: expand lists
+
+
 async function loadReservationsSummary(dayOffset){
   const guestsEl = document.getElementById(dayOffset === 0 ? "res-today-guests" : "res-tomorrow-guests");
   const timesEl  = document.getElementById(dayOffset === 0 ? "res-today-times"  : "res-tomorrow-times");
-  const breakdownEl = document.getElementById(dayOffset === 0 ? "res-today-breakdown" : "res-tomorrow-breakdown");
-  const cancelledEl = document.getElementById(dayOffset === 0 ? "res-today-cancelled" : "res-tomorrow-cancelled");
   if (!guestsEl || !timesEl) return;
+
+  const toMin = (t) => {
+    const m = String(t||"").trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (!m) return null;
+    return Number(m[1])*60 + Number(m[2]);
+  };
+  const now = new Date();
+  const nowMin = now.getHours()*60 + now.getMinutes();
+  const nowStr = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
 
   try {
     const target = addDays(new Date(), dayOffset);
@@ -134,64 +144,111 @@ async function loadReservationsSummary(dayOffset){
     const json = await res.json();
     if (!json.ok) throw new Error(json.error || "Reservation load error");
 
-    const dataRaw = Array.isArray(json.data) ? json.data : [];
+    const data = Array.isArray(json.data) ? json.data : [];
 
-    // ❌ Cancelled не считаем в сумме, но показываем отдельной строкой
-    const isCancelled = (it) => {
-      const st = String(it && it.status ? it.status : "").toLowerCase();
-      return !!(it && it.cancelled) || st === "cancelled" || st === "canceled";
-    };
+    const rows = data.map(it => {
+      const time = String(it.time || "").trim();
+      const min = toMin(time);
+      const guests = parseInt(String(it.guests ?? "").replace(/[^\d]/g,""), 10) || 0;
 
-    const data = dataRaw.filter(it => !isCancelled(it));
-    const cancelledCount = dataRaw.length - data.length;
+      const src = String(it.source || it.Source || it.SOURCE || it.from || "").trim();
+      const isQuandoo = /quandoo/i.test(src);
+      const badge = isQuandoo ? "Quandoo" : "ручн.";
 
-    // split manual/quandoo
-    const isQuandoo = (it) => String(it && it.source ? it.source : "").toLowerCase() === "quandoo";
-    const quandooRows = data.filter(isQuandoo);
-    const manualRows  = data.filter(it => !isQuandoo(it));
+      const status = String(it.status || it.STATUS || "").toLowerCase().trim();
+      const cancelled = status === "cancelled" || status === "canceled" || String(it.cancelled||"").toLowerCase()==="true";
 
-    let totalGuests = 0;
-    let manualGuests = 0;
-    let quandooGuests = 0;
-    let manualCount = manualRows.length;
-    let quandooCount = quandooRows.length;
+      return { time, min, guests, badge, isQuandoo, cancelled };
+    }).filter(r => r.min !== null).sort((a,b)=>a.min-b.min);
 
-    const byTime = new Map();
-
-    for (const it of data){
-      const t = String(it.time || "").trim();
-      const g = parseInt(String(it.guests || "0").replace(/[^\d]/g,""), 10) || 0;
-      totalGuests += g;
-      if (isQuandoo(it)) quandooGuests += g; else manualGuests += g;
-      if (t) byTime.set(t, (byTime.get(t) || 0) + g);
-    }
-
-    guestsEl.textContent = String(totalGuests || 0);
-
-    if (breakdownEl) {
-      breakdownEl.textContent = `резервації: ${manualCount} ручн. / ${quandooCount} Quandoo · гості: ${manualGuests} / ${quandooGuests}`;
-    }
-
-    if (cancelledEl) {
-      if (cancelledCount > 0) {
-        cancelledEl.style.display = "block";
-        cancelledEl.textContent = `скасовано: ${cancelledCount}`;
-      } else {
-        cancelledEl.style.display = "none";
-        cancelledEl.textContent = "";
-      }
-    }
-
-    const items = [...byTime.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
-    if (!items.length) {
+    if (!rows.length){
+      guestsEl.textContent = "0";
       timesEl.textContent = "Немає резервацій";
       return;
     }
 
-    // показываем ВСЕ времена (как ты просил)
-    timesEl.innerHTML = items
-      .map(([t,g]) => `<div class="t"><span>${escapeHtml(t)}</span><span>${g} гостей</span></div>`)
-      .join("");
+    const active = rows.filter(r=>!r.cancelled);
+    const totalGuests = active.reduce((s,r)=>s+r.guests,0);
+    const manualCount = active.filter(r=>!r.isQuandoo).length;
+    const quandooCount = active.filter(r=>r.isQuandoo).length;
+    const manualGuests = active.filter(r=>!r.isQuandoo).reduce((s,r)=>s+r.guests,0);
+    const quandooGuests = active.filter(r=>r.isQuandoo).reduce((s,r)=>s+r.guests,0);
+    const cancelledCount = rows.filter(r=>r.cancelled).length;
+
+    guestsEl.textContent = String(totalGuests);
+
+    const expanded = !!_resExpanded[dayOffset];
+
+    let viewRows = rows;
+    if (!expanded){
+      if (dayOffset === 0){
+        const nextIdx = rows.findIndex(r => r.min > nowMin);
+        const beforeIdx = nextIdx === -1 ? rows.length - 1 : Math.max(0, nextIdx - 1);
+        const start = Math.max(0, beforeIdx);
+        const end = nextIdx === -1 ? rows.length : Math.min(rows.length, nextIdx + 5);
+        viewRows = rows.slice(start, end);
+      } else {
+        viewRows = rows.slice(0, 6);
+      }
+    }
+
+    const renderRow = (r, past) => {
+      const cls = ["mini-res-row", past ? "is-past" : "", r.cancelled ? "is-cancelled" : ""].filter(Boolean).join(" ");
+      const badgeCls = r.isQuandoo ? "bq" : "bm";
+      const cancelTag = r.cancelled ? `<span class="mini-res-cancel">скасовано</span>` : "";
+      return `
+        <div class="${cls}">
+          <span class="mini-res-time">${escapeHtml(r.time)}</span>
+          <span class="mini-res-guests">${r.guests}</span>
+          <span class="mini-res-badge ${badgeCls}">${r.badge}</span>
+          ${cancelTag}
+        </div>
+      `;
+    };
+
+    const isPast = (r) => dayOffset===0 && r.min <= nowMin;
+
+    let htmlRows = "";
+    if (dayOffset === 0){
+      const splitIdx = viewRows.findIndex(r => r.min > nowMin);
+      const line = `
+        <div class="mini-now">
+          <span class="mini-now-dot"></span><span class="mini-now-line"></span><span class="mini-now-time">${nowStr}</span>
+        </div>
+      `;
+      if (splitIdx === -1){
+        htmlRows = viewRows.map(r => renderRow(r, true)).join("") + line;
+      } else if (splitIdx === 0){
+        htmlRows = line + viewRows.map(r => renderRow(r, false)).join("");
+      } else {
+        htmlRows =
+          viewRows.slice(0, splitIdx).map(r => renderRow(r, true)).join("") +
+          line +
+          viewRows.slice(splitIdx).map(r => renderRow(r, false)).join("");
+      }
+    } else {
+      htmlRows = viewRows.map(r => renderRow(r, false)).join("");
+    }
+
+    const sub = `
+      <div class="mini-sub">
+        резервації: ${manualCount} ручн. / ${quandooCount} Quandoo · гості: ${manualGuests} / ${quandooGuests}
+        ${cancelledCount ? `<span class="mini-sub--cancel"> · скасовано: ${cancelledCount}</span>` : ""}
+      </div>
+    `;
+
+    const hiddenExists = rows.length > viewRows.length;
+    const btn = hiddenExists ? `<button class="mini-res-btn" data-day="${dayOffset}">${expanded ? "Згорнути" : "Показати всі"}</button>` : "";
+
+    timesEl.innerHTML = sub + htmlRows + btn;
+
+    const b = timesEl.querySelector(".mini-res-btn");
+    if (b){
+      b.onclick = () => {
+        _resExpanded[dayOffset] = !_resExpanded[dayOffset];
+        loadReservationsSummary(dayOffset);
+      };
+    }
 
   } catch (e) {
     console.error(e);

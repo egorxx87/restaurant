@@ -399,43 +399,137 @@ function df(label, key, value, span2=false) {
 function renderMobile(data) {
   if (!elCards) return;
   elCards.innerHTML = "";
+
   if (!data.length) {
     elCards.innerHTML = `<div style="color:#6b7280;padding:10px;">Немає записів</div>`;
     return;
   }
 
   for (const item of data) {
-    const isQ = isQuandoo_(item);
+    const src = String(item.source || "").toLowerCase();
+    const isQuandoo = src === "quandoo";
     const cancelled = isCancelled_(item);
-    const parsed = isQ ? splitQuandooName_(item.from) : { name: (item.from ?? "—"), note: "" };
+
+    const parsed = isQuandoo ? splitQuandooName_(item.from) : { name: (item.from ?? "—"), note: "" };
 
     const card = document.createElement("div");
     card.className = "res-card";
     if (cancelled) card.classList.add("res-cancelled");
 
+    // badges
+    const badges = [];
+    badges.push(`<span class="res-badge ${isQuandoo ? "res-badge--quandoo" : "res-badge--manual"}">${isQuandoo ? "Quandoo" : "ручн."}</span>`);
+    if (item.status) badges.push(`<span class="res-badge res-badge--status">${escapeHtml(String(item.status).toLowerCase())}</span>`);
+    if (cancelled) badges.push(`<span class="res-badge res-badge--cancelled">скасовано</span>`);
+
     card.innerHTML = `
       <div class="res-card__top">
-        <div class="res-card__left">
+        <div style="min-width:0;">
           <div class="res-card__title">${escapeHtml(parsed.name || "—")}</div>
-          <div class="res-card__meta">${escapeHtml(item.date || "")} · ${escapeHtml(item.time || "")} · ${escapeHtml(String(item.guests || ""))}</div>
+          <div class="res-card__meta">
+            ${escapeHtml(item.date || "")} · ${escapeHtml(item.time || "")} · ${escapeHtml(String(item.guests || ""))}
+          </div>
           <div class="res-card__meta">
             ${item.email ? `<a href="mailto:${escapeAttr(item.email)}">${escapeHtml(item.email)}</a>` : ""}
             ${item.phone ? ` · <a href="tel:${escapeAttr(String(item.phone).replace(/\s+/g,""))}">${escapeHtml(item.phone)}</a>` : ""}
           </div>
-          ${isQ && parsed.note ? `<details class="res-details"><summary>Деталі</summary><div class="res-details__text">${escapeHtml(parsed.note)}</div></details>` : ""}
         </div>
-        <div class="res-card__right">
-          <span class="res-badge ${isQ ? "res-badge--quandoo" : "res-badge--manual"}">${isQ ? "Quandoo" : "ручн."}</span>
-          ${item.status ? `<span class="res-badge res-badge--status">${escapeHtml(String(item.status).toLowerCase())}</span>` : ""}
-          ${cancelled ? `<span class="res-badge res-badge--cancelled">скасовано</span>` : ""}
+
+        <div class="res-card__badges">
+          ${badges.join("")}
         </div>
       </div>
+
+      ${!isQuandoo ? buildMobileManualEditor_(item) : ""}
     `;
+
+    // handlers (manual only)
+    if (!isQuandoo) {
+      const btnEdit = card.querySelector("[data-act='edit']");
+      const btnSave = card.querySelector("[data-act='save']");
+      const btnCancel = card.querySelector("[data-act='cancel']");
+      const editBox = card.querySelector(".res-m-edit");
+
+      btnEdit?.addEventListener("click", () => {
+        editBox.classList.toggle("is-open");
+      });
+
+      btnCancel?.addEventListener("click", () => {
+        editBox.classList.remove("is-open");
+      });
+
+      btnSave?.addEventListener("click", async () => {
+        const patch = {
+          confirmed: !!card.querySelector("[data-f='confirmed']")?.checked,
+          date: card.querySelector("[data-f='date']")?.value ?? "",
+          time: card.querySelector("[data-f='time']")?.value ?? "",
+          guests: card.querySelector("[data-f='guests']")?.value ?? "",
+          from: card.querySelector("[data-f='from']")?.value ?? "",
+          email: card.querySelector("[data-f='email']")?.value ?? "",
+          phone: card.querySelector("[data-f='phone']")?.value ?? ""
+        };
+
+        await updateRow(item.row, patch, btnSave);
+        editBox.classList.remove("is-open");
+        await fetchAllOnce();
+      });
+    }
 
     elCards.appendChild(card);
   }
 }
 
+function buildMobileManualEditor_(item){
+  return `
+    <div class="res-m-actions">
+      <button class="res-m-btn" type="button" data-act="edit">Редагувати</button>
+    </div>
+
+    <div class="res-m-edit">
+      <div class="res-m-grid">
+        <label class="res-df">
+          <span>Підтв.</span>
+          <input type="checkbox" class="res-checkbox" data-f="confirmed" ${item.confirmed ? "checked" : ""}>
+        </label>
+
+        <label class="res-df">
+          <span>К-ть</span>
+          <input class="res-field" data-f="guests" value="${escapeAttr(item.guests ?? "")}">
+        </label>
+
+        <label class="res-df">
+          <span>Дата</span>
+          <input class="res-field" data-f="date" value="${escapeAttr(item.date ?? "")}">
+        </label>
+
+        <label class="res-df">
+          <span>Час</span>
+          <input class="res-field" data-f="time" value="${escapeAttr(item.time ?? "")}">
+        </label>
+
+        <label class="res-df span-2">
+          <span>Від кого</span>
+          <input class="res-field" data-f="from" value="${escapeAttr(item.from ?? "")}">
+        </label>
+
+        <label class="res-df span-2">
+          <span>Email</span>
+          <input class="res-field" data-f="email" value="${escapeAttr(item.email ?? "")}">
+        </label>
+
+        <label class="res-df span-2">
+          <span>Телефон</span>
+          <input class="res-field" data-f="phone" value="${escapeAttr(item.phone ?? "")}">
+        </label>
+      </div>
+
+      <div class="res-m-actions">
+        <button class="res-m-btn" type="button" data-act="save">Зберегти</button>
+        <button class="res-m-btn" type="button" data-act="cancel">Скасувати</button>
+      </div>
+    </div>
+  `;
+}
 /* ================== WRITE API (manual) ================== */
 
 async function updateRow(row, patch, el) {
