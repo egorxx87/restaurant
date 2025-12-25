@@ -237,3 +237,50 @@
   border:1px solid rgba(59,130,246,.35);background:#fff;font-weight:900;cursor:pointer
 }
 .mini-res-btn:hover{background:#f3f4f6}
+/* ===== Admin schedule module fix ===== */
+
+.admin-module {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .admin-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-day {
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.admin-day h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.admin-person {
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.admin-person strong {
+  display: block;
+  font-weight: 700;
+}
+
+.admin-person span {
+  color: #6b7280;
+  font-size: 12px;
+}
