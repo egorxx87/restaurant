@@ -226,34 +226,48 @@ function hourShort_(t){
   }
 
   // ===== JSONP (для обхода CORS на GET) =====
-  function jsonp(url) {
-    return new Promise((resolve, reject) => {
-      const cb = "cb_" + Math.random().toString(36).slice(2);
-      const script = document.createElement("script");
-      const sep = url.includes("?") ? "&" : "?";
-      script.src = `${url}${sep}callback=${cb}`;
+ // ===== GET helper (fetch first, JSONP fallback) =====
+async function apiGet(url) {
+  // 1) пробуем fetch (не ломается расширениями)
+  try {
+    const res = await fetch(url, { method: "GET", cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (e) {
+    // 2) fallback на старый JSONP (если CORS не пускает)
+    return await jsonp(url);
+  }
+}
 
-      window[cb] = (data) => {
-        try { resolve(data); } finally {
-          delete window[cb];
-          script.remove();
-        }
-      };
+// ===== JSONP (fallback) =====
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const cb = "cb_" + Math.random().toString(36).slice(2);
+    const script = document.createElement("script");
+    const sep = url.includes("?") ? "&" : "?";
+    script.src = `${url}${sep}callback=${cb}`;
 
-      script.onerror = () => {
+    window[cb] = (data) => {
+      try { resolve(data); } finally {
         delete window[cb];
         script.remove();
-        reject(new Error("JSONP load failed"));
-      };
+      }
+    };
 
-      document.body.appendChild(script);
-    });
-  }
+    script.onerror = () => {
+      delete window[cb];
+      script.remove();
+      reject(new Error("JSONP load failed"));
+    };
 
+    // важно: лучше head
+    (document.head || document.body).appendChild(script);
+  });
+}
   // ✅ Load colors once (shared for all users)
   async function loadNameColors() {
     try {
-      const data = await jsonp(`${SCHEDULE_API_URL}?action=get_colors`);
+      const data = await apiGet(`${SCHEDULE_API_URL}?action=get_colors`);
       NAME_COLORS = (data && typeof data === "object") ? data : {};
     } catch (e) {
       console.warn("Неможливо завантажити кольори:", e);
@@ -448,7 +462,7 @@ function applyDynamicLabels(root){
     subLabelEl.textContent = " ";
 
     try {
-      const data = await jsonp(`${SCHEDULE_API_URL}?action=list&month=${monthStr}`);
+      const data = await apiGet(`${SCHEDULE_API_URL}?action=list&month=${monthStr}`);
       const rows = (data && data.rows) ? data.rows : [];
 
       allRows = rows.map((r) => {
