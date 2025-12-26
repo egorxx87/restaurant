@@ -48,7 +48,24 @@
               </div>
 
             </div>
+<!-- Графік під адміном (щоб не було пустого місця) -->
+<div class="module-divider"></div>
+<div class="subheader">
+  <h3 class="subheader__title">Графік</h3>
+  <a class="subheader__link" href="schedule.html?mode=day">Відкрити</a>
+</div>
 
+<div class="split-two">
+  <a class="mini-card" href="schedule.html?mode=day&day=today">
+    <div class="mini-title">Сьогодні</div>
+    <div class="mini-list" id="schedule-today">—</div>
+  </a>
+
+  <a class="mini-card" href="schedule.html?mode=day&day=tomorrow">
+    <div class="mini-title">Завтра</div>
+    <div class="mini-list" id="schedule-tomorrow">—</div>
+  </a>
+</div>
             <div class="module-note">
               <em>Інформація завантажується…</em>
             </div>
@@ -83,23 +100,6 @@
         </div>
 
         <!-- Графік -->
-        <div class="dashboard-module">
-          <div class="module-header">
-            <h2 class="module-title">Графік</h2>
-          </div>
-
-          <div class="split-two">
-            <a class="mini-card" href="schedule.html?mode=day&day=today">
-              <div class="mini-title">Сьогодні</div>
-              <div class="mini-list" id="schedule-today">—</div>
-            </a>
-
-            <a class="mini-card" href="schedule.html?mode=day&day=tomorrow">
-              <div class="mini-title">Завтра</div>
-              <div class="mini-list" id="schedule-tomorrow">—</div>
-            </a>
-          </div>
-        </div>
 
         <!-- Завдання -->
         <div class="dashboard-module module-tasks">
@@ -133,19 +133,7 @@
         </div>
 
         <!-- Швидкі дії -->
-        <div class="dashboard-module module-actions">
-          <div class="module-header">
-            <h2 class="module-title">Швидкі дії</h2>
-          </div>
-          <div class="module-content">
-            <div class="action-buttons">
-              <a href="reservation.html?add=new" class="action-btn">➕ Нова резервація</a>
-              <a href="schedule.html?mode=day" class="action-btn">👥 Призначити зміну</a>
-              <button class="action-btn" type="button">📊 Статистика</button>
-              <button class="action-btn" type="button">📋 Звіт</button>
-            </div>
-          </div>
-        </div>
+        
 
       </div>
     </main>

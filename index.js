@@ -119,7 +119,7 @@ function hideDutyNote(){
    RESERVATIONS (today/tomorrow)
 ========================= */
 
-const _resExpanded = { 0:false, 1:false }; // dashboard: expand lists
+
 
 
 async function loadReservationsSummary(dayOffset){
@@ -132,6 +132,7 @@ async function loadReservationsSummary(dayOffset){
     if (!m) return null;
     return Number(m[1])*60 + Number(m[2]);
   };
+
   const now = new Date();
   const nowMin = now.getHours()*60 + now.getMinutes();
   const nowStr = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
@@ -140,6 +141,7 @@ async function loadReservationsSummary(dayOffset){
     const target = addDays(new Date(), dayOffset);
     const ddmmyyyy = toDDMMYYYY(target);
 
+    // грузим ОДИН раз
     const res = await fetch(`${RESERVATION_API_URL}?action=getByDate&date=${encodeURIComponent(ddmmyyyy)}`);
     const json = await res.json();
     if (!json.ok) throw new Error(json.error || "Reservation load error");
@@ -177,21 +179,6 @@ async function loadReservationsSummary(dayOffset){
 
     guestsEl.textContent = String(totalGuests);
 
-    const expanded = !!_resExpanded[dayOffset];
-
-    let viewRows = rows;
-    if (!expanded){
-      if (dayOffset === 0){
-        const nextIdx = rows.findIndex(r => r.min > nowMin);
-        const beforeIdx = nextIdx === -1 ? rows.length - 1 : Math.max(0, nextIdx - 1);
-        const start = Math.max(0, beforeIdx);
-        const end = nextIdx === -1 ? rows.length : Math.min(rows.length, nextIdx + 5);
-        viewRows = rows.slice(start, end);
-      } else {
-        viewRows = rows.slice(0, 6);
-      }
-    }
-
     const renderRow = (r, past) => {
       const cls = ["mini-res-row", past ? "is-past" : "", r.cancelled ? "is-cancelled" : ""].filter(Boolean).join(" ");
       const badgeCls = r.isQuandoo ? "bq" : "bm";
@@ -206,30 +193,6 @@ async function loadReservationsSummary(dayOffset){
       `;
     };
 
-    const isPast = (r) => dayOffset===0 && r.min <= nowMin;
-
-    let htmlRows = "";
-    if (dayOffset === 0){
-      const splitIdx = viewRows.findIndex(r => r.min > nowMin);
-      const line = `
-        <div class="mini-now">
-          <span class="mini-now-dot"></span><span class="mini-now-line"></span><span class="mini-now-time">${nowStr}</span>
-        </div>
-      `;
-      if (splitIdx === -1){
-        htmlRows = viewRows.map(r => renderRow(r, true)).join("") + line;
-      } else if (splitIdx === 0){
-        htmlRows = line + viewRows.map(r => renderRow(r, false)).join("");
-      } else {
-        htmlRows =
-          viewRows.slice(0, splitIdx).map(r => renderRow(r, true)).join("") +
-          line +
-          viewRows.slice(splitIdx).map(r => renderRow(r, false)).join("");
-      }
-    } else {
-      htmlRows = viewRows.map(r => renderRow(r, false)).join("");
-    }
-
     const sub = `
       <div class="mini-sub">
         резервації: ${manualCount} ручн. / ${quandooCount} Quandoo · гості: ${manualGuests} / ${quandooGuests}
@@ -237,18 +200,81 @@ async function loadReservationsSummary(dayOffset){
       </div>
     `;
 
-    const hiddenExists = rows.length > viewRows.length;
-    const btn = hiddenExists ? `<button class="mini-res-btn" data-day="${dayOffset}">${expanded ? "Згорнути" : "Показати всі"}</button>` : "";
+    const nowLine = `
+      <div class="mini-now">
+        <span class="mini-now-dot"></span><span class="mini-now-line"></span><span class="mini-now-time">${nowStr}</span>
+      </div>
+    `;
 
-    timesEl.innerHTML = sub + htmlRows + btn;
+    // состояние (в data-атрибуте), чтобы не городить глобальные переменные
+    const stateKey = dayOffset === 0 ? "expandedToday" : "expandedTomorrow";
+    const initialExpanded = timesEl.dataset[stateKey] === "1";
 
-    const b = timesEl.querySelector(".mini-res-btn");
-    if (b){
-      b.onclick = () => {
-        _resExpanded[dayOffset] = !_resExpanded[dayOffset];
-        loadReservationsSummary(dayOffset);
-      };
+    // ===== helpers build HTML =====
+    const buildFullTodayHtml = () => {
+      const splitIdx = rows.findIndex(r => r.min > nowMin);
+      if (splitIdx === -1) {
+        return rows.map(r => renderRow(r, true)).join("") + nowLine;
+      } else if (splitIdx === 0) {
+        return nowLine + rows.map(r => renderRow(r, false)).join("");
+      } else {
+        return rows.slice(0, splitIdx).map(r => renderRow(r, true)).join("") +
+               nowLine +
+               rows.slice(splitIdx).map(r => renderRow(r, false)).join("");
+      }
+    };
+
+    const buildCollapsedTodayHtml = () => {
+      const past = rows.filter(r => r.min <= nowMin);
+      const future = rows.filter(r => r.min > nowMin);
+
+      const pastTop = past.slice(-2);      // 2 серых
+      const futureTop = future.slice(0, 5); // 5 будущих
+
+      return pastTop.map(r => renderRow(r, true)).join("") +
+             nowLine +
+             futureTop.map(r => renderRow(r, false)).join("");
+    };
+
+    const buildTomorrowHtml = (expanded) => {
+      if (expanded) return rows.map(r => renderRow(r, false)).join("");
+      return rows.slice(0, 6).map(r => renderRow(r, false)).join("");
+    };
+
+    const hasMore =
+      (dayOffset === 0)
+        ? rows.length > (rows.filter(r=>r.min<=nowMin).slice(-2).length + rows.filter(r=>r.min>nowMin).slice(0,5).length)
+        : rows.length > 6;
+
+    // ===== render (NO FETCH on toggle) =====
+    function render(expanded){
+      let listHtml = "";
+      if (dayOffset === 0) listHtml = expanded ? buildFullTodayHtml() : buildCollapsedTodayHtml();
+      else listHtml = buildTomorrowHtml(expanded);
+
+      const btn = hasMore ? `
+        <button class="mini-res-btn mini-res-toggle" type="button">
+          ${expanded ? "Згорнути" : "Показати всі"}
+        </button>
+      ` : "";
+
+      timesEl.innerHTML = sub + listHtml + btn;
+
+      const toggleBtn = timesEl.querySelector(".mini-res-toggle");
+      if (!toggleBtn) return;
+
+      // не даём родительской <a> перехватывать клик
+      toggleBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const nextExpanded = !expanded;
+        timesEl.dataset[stateKey] = nextExpanded ? "1" : "0";
+        render(nextExpanded); // мгновенно
+      }, { passive:false });
     }
+
+    render(initialExpanded);
 
   } catch (e) {
     console.error(e);
@@ -256,7 +282,6 @@ async function loadReservationsSummary(dayOffset){
     timesEl.textContent = "Помилка завантаження";
   }
 }
-
 /* =========================
    SCHEDULE (today/tomorrow) — roles only
 ========================= */

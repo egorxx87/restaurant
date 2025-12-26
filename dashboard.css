@@ -284,3 +284,73 @@
   color: #6b7280;
   font-size: 12px;
 }
+/* section inside a module (used on index: schedule under duty admin) */
+.module-divider{
+  height:1px;
+  background:#e5e7eb;
+  margin:12px 0;
+}
+
+.subheader{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+.subheader__title{
+  font-size:13px;
+  font-weight:900;
+  color:#111827;
+}
+
+.subheader__link{
+  font-size:12px;
+  font-weight:900;
+  color:#4f46e5;
+  text-decoration:none;
+}
+.subheader__link:hover{ text-decoration:underline; }
+.mini-res-details{ margin-top:12px; }
+
+.mini-res-details summary{
+  list-style:none;
+}
+.mini-res-details summary::-webkit-details-marker{ display:none; }
+
+.mini-res-details[open] .mini-res-btn{
+  background:#111827;
+  color:#fff;
+  border-color:#111827;
+}
+
+.mini-res-drop{
+  margin-top:10px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+.mini-res-drop{
+  margin-top:10px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  font-size: inherit;      /* важно */
+  line-height: inherit;    /* важно */
+}
+.mini-res-drop{ font-size:inherit; line-height:inherit; }
+/* чуть компактнее везде */
+.mini-res-row{ margin-top:8px; padding:9px 11px; }
+.mini-now{ margin:10px 0 2px; }
+.mini-now-time{ font-size:12px; }
+
+/* телефон */
+@media (max-width: 520px){
+  .mini-res-row{ margin-top:6px; padding:8px 10px; border-radius:12px; }
+  .mini-res-time{ width:52px; font-size:14px; }
+  .mini-res-guests{ font-size:14px; }
+  .mini-res-badge{ font-size:10px; padding:2px 7px; }
+  .mini-res-btn{ padding:10px 12px; border-radius:12px; font-size:14px; }
+  .mini-sub{ font-size:12px; }
+}
