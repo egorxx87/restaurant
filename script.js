@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", async () => {
   const SCHEDULE_API_URL =
-    "https://script.google.com/macros/s/AKfycbw_uswtYYaimbBJytiHAdcwjbvv2rujyBt2Rrc9jlBHoYQ358F7vi8OvvQEhTptODNZ8g/exec";
+    "https://script.google.com/macros/s/AKfycbzagvHUuF_o3O8O6vnZbClW74R9QxKFfCsaGb2hHuSVtcD3uCbsjUwJm89MVdLJVELvYQ/exec";
 
   const MODE_DAY = "day";
   const MODE_WEEK = "week";
