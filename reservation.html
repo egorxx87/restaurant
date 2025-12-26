@@ -25,20 +25,12 @@
 
     <main>
       <div class="card">
-
         <div class="res-toolbar">
           <div class="res-left">
             <button id="res-today" class="week-nav__btn is-active" type="button">Сьогодні</button>
+            <button id="res-tomorrow" class="week-nav__btn" type="button">Завтра</button>
             <button id="res-week" class="week-nav__btn" type="button">Тиждень</button>
-            <button id="res-all" class="week-nav__btn" type="button">Усі</button>
-          </div>
-
-          <div class="res-right">
-            <label class="res-label">
-              Дата:
-              <input id="res-date" class="res-input" type="date" />
-            </label>
-            <button id="res-apply-date" class="week-nav__btn" type="button">Показати</button>
+            <button id="res-month" class="week-nav__btn" type="button">Місяць</button>
           </div>
         </div>
 
@@ -47,101 +39,14 @@
           <span id="res-error-text" class="res-error" style="display:none;"></span>
         </div>
 
-        <!-- DESKTOP -->
-        <div class="res-only-desktop">
-          <div class="res-table-wrap">
-            <table class="res-table">
-              <thead>
-                <tr>
-                  <th>Підтв.</th>
-                  <th>Дата</th>
-                  <th>Час</th>
-                  <th>К-ть</th>
-                  <th>Від кого + контакти</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody id="res-tbody"></tbody>
-            </table>
-          </div>
-
-          <div class="res-new">
-            <div class="res-new__title">Нова резервація (manual)</div>
-
-            <div class="res-new__grid">
-              <label class="res-f">
-                <span>Підтв.</span>
-                <input id="new-confirmed" type="checkbox" class="res-checkbox">
-              </label>
-
-              <label class="res-f">
-                <span>Дата (dd.mm.yyyy)</span>
-                <input id="new-date" class="res-field" placeholder="24.12.2025">
-              </label>
-
-              <label class="res-f">
-                <span>Час</span>
-                <input id="new-time" class="res-field" placeholder="18:30">
-              </label>
-
-              <label class="res-f">
-                <span>К-ть</span>
-                <input id="new-guests" class="res-field" placeholder="2">
-              </label>
-
-              <label class="res-f span-2">
-                <span>Від кого</span>
-                <input id="new-from" class="res-field" placeholder="Імʼя">
-              </label>
-
-              <label class="res-f span-2">
-                <span>Email</span>
-                <input id="new-email" class="res-field">
-              </label>
-
-              <label class="res-f span-2">
-                <span>Телефон</span>
-                <input id="new-phone" class="res-field">
-              </label>
-
-              <label class="res-f span-2">
-                <span>Оплата</span>
-                <input id="new-payment" class="res-field">
-              </label>
-
-              <label class="res-f">
-                <span>Ціна</span>
-                <input id="new-price" class="res-field">
-              </label>
-
-              <label class="res-f">
-                <span>Меню</span>
-                <input id="new-menu" class="res-field">
-              </label>
-
-              <label class="res-f span-2">
-                <span>Примітка</span>
-                <input id="new-menu2" class="res-field">
-              </label>
-            </div>
-
-            <div class="res-new__actions">
-              <button id="res-add" class="week-nav__btn res-primary" type="button">Додати</button>
-              <span class="res-new__hint">Enter також додає.</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- MOBILE -->
-        <div class="res-only-mobile">
-          <div id="res-cards" class="res-cards"></div>
+        <div class="res-list-wrap">
+          <div id="res-list" class="res-list"></div>
         </div>
 
         <div class="footer-note">
-          ✅ Manual — можна редагувати і додавати. Quandoo — readonly.<br>
-          ❌ Cancelled не входить в суму, але позначається «скасовано».
+          ✅ Manual — можна редагувати і додавати (в іншому модулі). Quandoo — readonly.<br>
+          ❌ Cancelled не входить в суму, але показується як «Отменено».
         </div>
-
       </div>
     </main>
   </div>
