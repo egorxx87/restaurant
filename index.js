@@ -93,12 +93,22 @@ async function loadDutyAdminsForOffset(dayOffset, targetId){
       lines.push({ name, text: intervals.join(", ") });
     }
 
-    hostEl.innerHTML = lines.map(x =>
-      `<div style="margin-bottom:8px;">
-         <strong>${escapeHtml(x.name)}</strong><br>
-         <span>${escapeHtml(x.text)}</span>
-       </div>`
-    ).join("");
+  hostEl.innerHTML = lines.map(x => {
+  const s = String(x.name || "");
+
+  // 1) Берём префикс "DD.MM HH:MM"
+  // 2) Всё остальное считаем названием
+  // 3) Ставим ОДИН пробел между ними
+  const fixedName = s.replace(
+    /^(\d{2}\.\d{2}\s+\d{1,2}:\d{2})\s*(.*)$/,
+    (m, prefix, rest) => rest ? `${prefix} ${rest}` : prefix
+  );
+
+  return `<div style="margin-bottom:8px;">
+    <strong>${escapeHtml(fixedName)}</strong><br>
+    <span>${escapeHtml(x.text)}</span>
+  </div>`;
+}).join("");
 
     hideDutyNote();
   } catch (e) {

@@ -1,0 +1,237 @@
+/* =========================
+   INDEX (Home) fixes:
+   - Tasks mini module
+   - Events mini calendar module
+   ========================= */
+
+/* ---------- TASKS (мини-список на главной) ---------- */
+/* СКОУП: только внутри модуля .module-tasks на index */
+.module-tasks .task-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.module-tasks .task-empty{
+  padding:12px 12px;
+  border:1px dashed #e5e7eb;
+  border-radius:14px;
+  background:#fff;
+  color:#6b7280;
+  font-weight:800;
+}
+
+.module-tasks .task-row{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+
+  padding:10px 12px;
+  border:1px solid #eef2f7;
+  border-radius:14px;
+  background:#fff;
+}
+
+.module-tasks .task-row:hover{ background:#f9fafb; }
+
+.module-tasks .task-title{
+  font-weight:800;
+  color:#111827;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.module-tasks .task-meta{
+  margin-top:6px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  font-size:12px;
+  font-weight:700;
+  color:#374151;
+}
+
+.module-tasks .task-badge{
+  font-size:11px;
+  font-weight:900;
+  padding:2px 8px;
+  border-radius:999px;
+  border:1px solid #e5e7eb;
+  white-space:nowrap;
+}
+
+.module-tasks .task-badge--red{
+  background:rgba(239,68,68,.10);
+  border-color:rgba(239,68,68,.25);
+  color:rgba(185,28,28,.95);
+}
+
+.module-tasks .task-badge--blue{
+  background:rgba(59,130,246,.10);
+  border-color:rgba(59,130,246,.25);
+  color:rgba(30,64,175,.95);
+}
+
+/* “Ще +3…” */
+.module-tasks .task-more{
+  margin-top:6px;
+  color:#6b7280;
+  font-weight:800;
+  cursor:pointer;
+}
+
+/* ---------- EVENTS (мини-календарь "Найближчі події") ---------- */
+.events-toolbar{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin: 6px 0 10px;
+}
+
+/* СКОУП: только кнопки в events-toolbar */
+.events-toolbar .btn{
+  border:1px solid #e5e7eb;
+  background:#f9fafb;
+  color:#111827;
+  border-radius:999px;
+  padding:7px 12px;
+  font-size:13px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.events-toolbar .btn:hover{ background:#f3f4f6; }
+
+/* активная */
+.events-toolbar .btn--active{
+  background:#111827;
+  color:#fff;
+  border-color:#111827;
+}
+
+/* список событий */
+.events-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  font-weight:700;
+  color:#111827;
+}
+
+/* карточка события (если у тебя JS генерит строки/карточки) */
+.event-row{
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+
+  padding:10px 12px;
+  border:1px solid #eef2f7;
+  border-radius:14px;
+  background:#fff;
+}
+
+.event-time{
+  width:64px;
+  font-weight:900;
+  white-space:nowrap;
+}
+
+.event-title{
+  font-weight:800;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+.event-sub{
+  margin-top:4px;
+  font-size:12px;
+  color:#6b7280;
+  font-weight:700;
+}
+
+/* mobile */
+@media (max-width:520px){
+  .events-toolbar .btn{ flex: 1; text-align:center; }
+}
+/* ===== FIX: events rows (time + title overlap) ===== */
+
+.event-row{
+  display: grid;
+  grid-template-columns: 86px 1fr; /* колонка времени + текст */
+  gap: 12px;
+  align-items: start;
+
+  padding: 12px 14px;
+  border: 1px solid #eef2f7;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.event-time{
+  font-weight: 900;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  color: #111827;
+}
+
+.event-title{
+  font-weight: 800;
+  line-height: 1.25;
+
+  /* важно: чтобы длинные слова/адреса не ломали строку */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.event-sub{
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* на телефоне чуть шире колонку времени */
+@media (max-width: 520px){
+  .event-row{ grid-template-columns: 92px 1fr; }
+}
+/* ===== HOME EVENTS (fix no gap / overlap) ===== */
+#eventsList .event-row{
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;                 /* вот этот gap и решает 11:00Meeting */
+  padding: 12px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  background: #fff;
+  margin-bottom: 12px;
+}
+
+#eventsList .event-time{
+  min-width: 96px;           /* фиксированная колонка под "22.12 11:00" */
+  font-weight: 900;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+#eventsList .event-title{
+  font-weight: 900;
+  line-height: 1.25;
+  overflow-wrap: anywhere;   /* длинные слова/немецкие названия не ломают */
+  word-break: break-word;
+}
+
+#eventsList .event-meta{
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+  overflow-wrap: anywhere;
+}
