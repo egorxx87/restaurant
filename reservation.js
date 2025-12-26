@@ -1,6 +1,22 @@
 const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwNlMF6GEshtn2-5C1n-EsaCRkNZa2xPOQ2mA2zfdYvZyEIl3JSk4evG2NgkCMQaUdqaA/exec";
 
+function menuBadgeHtml(menuRaw) {
+  const v = String(menuRaw || "").trim();
+  const key = v.toLowerCase();
 
+  // если в колонке G пусто → желтая кнопка "Меню ?"
+  if (!v) {
+    return `<span class="mini-res-menu mini-res-menu--unknown">Меню ?</span>`;
+  }
+
+  // если написано "немає / нема / нет / no" → ничего не показываем
+  if (["немає", "нема", "нет", "no", "none"].includes(key)) {
+    return "";
+  }
+
+  // если есть любой текст (например "меню") → зеленая кнопка "Меню"
+  return `<span class="mini-res-menu mini-res-menu--yes">Меню</span>`;
+}
 // оставь свой реальный URL как был у тебя в файле
 
 const ACTIVE_MINUTES = 10; // бронь "активна" ещё 10 минут после времени
@@ -143,7 +159,20 @@ function rangeForMode(){
   }
   return { start, end };
 }
+function menuBadgeHtml(menuRaw) {
+  const v = String(menuRaw || "").trim();
+  const key = v.toLowerCase();
 
+  if (!v) {
+    return `<span class="mini-res-menu mini-res-menu--unknown">Меню ?</span>`;
+  }
+
+  if (["немає", "нема", "нет", "no", "none"].includes(key)) {
+    return "";
+  }
+
+  return `<span class="mini-res-menu mini-res-menu--yes">Меню</span>`;
+}
 /* ================== RENDER ================== */
 function render(){
   if(!elDays) return;

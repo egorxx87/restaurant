@@ -151,7 +151,6 @@ async function loadReservationsSummary(dayOffset){
     const target = addDays(new Date(), dayOffset);
     const ddmmyyyy = toDDMMYYYY(target);
 
-    // грузим ОДИН раз
     const res = await fetch(`${RESERVATION_API_URL}?action=getByDate&date=${encodeURIComponent(ddmmyyyy)}`);
     const json = await res.json();
     if (!json.ok) throw new Error(json.error || "Reservation load error");
@@ -160,6 +159,7 @@ async function loadReservationsSummary(dayOffset){
 
     const rows = data.map(it => {
       const time = String(it.time || "").trim();
+      
       const min = toMin(time);
       const guests = parseInt(String(it.guests ?? "").replace(/[^\d]/g,""), 10) || 0;
 
@@ -167,10 +167,43 @@ async function loadReservationsSummary(dayOffset){
       const isQuandoo = /quandoo/i.test(src);
       const badge = isQuandoo ? "Quandoo" : "ручн.";
 
-      const status = String(it.status || it.STATUS || "").toLowerCase().trim();
-      const cancelled = status === "cancelled" || status === "canceled" || String(it.cancelled||"").toLowerCase()==="true";
+      // ✅ только столбец G (Меню)
+      // ✅ только столбец G (Меню)
+const menuRaw = String(it.menu ?? "").trim();
+const menuKey = menuRaw.toLowerCase();
 
-      return { time, min, guests, badge, isQuandoo, cancelled };
+let menuHtml = "";
+
+// показываем ТОЛЬКО для ручных
+if (!isQuandoo) {
+
+  // 1️⃣ пусто → Меню ?
+  if (!menuRaw) {
+    menuHtml = `<span class="mini-res-menu mini-res-menu--unknown">Меню ?</span>`;
+  }
+
+  // 2️⃣ любые варианты "немає / немае / нема / нет"
+  else if (/^нем/i.test(menuKey) || ["нет","no","none"].includes(menuKey)) {
+    menuHtml = "";
+  }
+
+  // 3️⃣ ЛЮБОЕ вхождение "меню"
+  else if (/меню/i.test(menuKey)) {
+    menuHtml = `<span class="mini-res-menu mini-res-menu--yes">Меню</span>`;
+  }
+
+  // 4️⃣ всё остальное — игнор
+  else {
+    menuHtml = "";
+  }
+}
+      const status = String(it.status || it.STATUS || "").toLowerCase().trim();
+      const cancelled =
+        status === "cancelled" ||
+        status === "canceled" ||
+        String(it.cancelled || "").toLowerCase() === "true";
+
+      return { time, min, guests, badge, isQuandoo, cancelled, menuHtml };
     }).filter(r => r.min !== null).sort((a,b)=>a.min-b.min);
 
     if (!rows.length){
@@ -190,18 +223,25 @@ async function loadReservationsSummary(dayOffset){
     guestsEl.textContent = String(totalGuests);
 
     const renderRow = (r, past) => {
-      const cls = ["mini-res-row", past ? "is-past" : "", r.cancelled ? "is-cancelled" : ""].filter(Boolean).join(" ");
-      const badgeCls = r.isQuandoo ? "bq" : "bm";
-      const cancelTag = r.cancelled ? `<span class="mini-res-cancel">скасовано</span>` : "";
-      return `
-        <div class="${cls}">
-          <span class="mini-res-time">${escapeHtml(r.time)}</span>
-          <span class="mini-res-guests">${r.guests}</span>
-          <span class="mini-res-badge ${badgeCls}">${r.badge}</span>
-          ${cancelTag}
-        </div>
-      `;
-    };
+  const cls = ["mini-res-row", past ? "is-past" : "", r.cancelled ? "is-cancelled" : ""]
+    .filter(Boolean).join(" ");
+
+  const badgeCls = r.isQuandoo ? "bq" : "bm";
+  const cancelTag = r.cancelled ? `<span class="mini-res-cancel">скасовано</span>` : "";
+
+  return `
+    <div class="${cls}">
+      <span class="mini-res-time">${escapeHtml(r.time)}</span>
+      <span class="mini-res-guests">${r.guests}</span>
+
+      <span class="mini-res-right">
+        ${r.menuHtml || ""}
+        <span class="mini-res-badge ${badgeCls}">${r.badge}</span>
+        ${cancelTag}
+      </span>
+    </div>
+  `;
+};
 
     const sub = `
       <div class="mini-sub">
@@ -216,11 +256,9 @@ async function loadReservationsSummary(dayOffset){
       </div>
     `;
 
-    // состояние (в data-атрибуте), чтобы не городить глобальные переменные
     const stateKey = dayOffset === 0 ? "expandedToday" : "expandedTomorrow";
     const initialExpanded = timesEl.dataset[stateKey] === "1";
 
-    // ===== helpers build HTML =====
     const buildFullTodayHtml = () => {
       const splitIdx = rows.findIndex(r => r.min > nowMin);
       if (splitIdx === -1) {
@@ -238,8 +276,8 @@ async function loadReservationsSummary(dayOffset){
       const past = rows.filter(r => r.min <= nowMin);
       const future = rows.filter(r => r.min > nowMin);
 
-      const pastTop = past.slice(-2);      // 2 серых
-      const futureTop = future.slice(0, 5); // 5 будущих
+      const pastTop = past.slice(-2);
+      const futureTop = future.slice(0, 5);
 
       return pastTop.map(r => renderRow(r, true)).join("") +
              nowLine +
@@ -256,7 +294,6 @@ async function loadReservationsSummary(dayOffset){
         ? rows.length > (rows.filter(r=>r.min<=nowMin).slice(-2).length + rows.filter(r=>r.min>nowMin).slice(0,5).length)
         : rows.length > 6;
 
-    // ===== render (NO FETCH on toggle) =====
     function render(expanded){
       let listHtml = "";
       if (dayOffset === 0) listHtml = expanded ? buildFullTodayHtml() : buildCollapsedTodayHtml();
@@ -273,14 +310,12 @@ async function loadReservationsSummary(dayOffset){
       const toggleBtn = timesEl.querySelector(".mini-res-toggle");
       if (!toggleBtn) return;
 
-      // не даём родительской <a> перехватывать клик
       toggleBtn.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-
         const nextExpanded = !expanded;
         timesEl.dataset[stateKey] = nextExpanded ? "1" : "0";
-        render(nextExpanded); // мгновенно
+        render(nextExpanded);
       }, { passive:false });
     }
 
@@ -291,8 +326,7 @@ async function loadReservationsSummary(dayOffset){
     guestsEl.textContent = "—";
     timesEl.textContent = "Помилка завантаження";
   }
-}
-/* =========================
+}/* =========================
    SCHEDULE (today/tomorrow) — roles only
 ========================= */
 
