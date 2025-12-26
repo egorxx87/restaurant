@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="index.css">
+   <link rel="stylesheet" href="mini_events.css">
 </head>
 <body>
   <div class="layout">
@@ -23,7 +24,21 @@
       <a class="top-nav__btn" href="tasks.html">Завдання</a>
       <a class="top-nav__btn" href="calendar.html">Календар</a>
     </div>
-
+<!-- MINI EVENTS (Birthdays + Holidays) -->
+<div class="mini-events mini-events--triple">
+  <div class="mini-events__col">
+    <div class="mini-events__colTitle">Сьогодні</div>
+    <div class="mini-events__list" id="miniEventsToday">Завантаження…</div>
+  </div>
+  <div class="mini-events__col">
+    <div class="mini-events__colTitle">Завтра</div>
+    <div class="mini-events__list" id="miniEventsTomorrow">Завантаження…</div>
+  </div>
+  <div class="mini-events__col">
+    <div class="mini-events__colTitle">Цього тижня</div>
+    <div class="mini-events__list" id="miniEventsWeek">Завантаження…</div>
+  </div>
+</div>
     <main>
       <div class="dashboard-grid">
 
@@ -146,5 +161,6 @@
   </div>
 
   <script src="index.js"></script>
+  <script src="mini_events.js"></script>
 </body>
 </html>
