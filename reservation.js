@@ -1,22 +1,6 @@
 const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwNlMF6GEshtn2-5C1n-EsaCRkNZa2xPOQ2mA2zfdYvZyEIl3JSk4evG2NgkCMQaUdqaA/exec";
 
-function menuBadgeHtml(menuRaw) {
-  const v = String(menuRaw || "").trim();
-  const key = v.toLowerCase();
 
-  // если в колонке G пусто → желтая кнопка "Меню ?"
-  if (!v) {
-    return `<span class="mini-res-menu mini-res-menu--unknown">Меню ?</span>`;
-  }
-
-  // если написано "немає / нема / нет / no" → ничего не показываем
-  if (["немає", "нема", "нет", "no", "none"].includes(key)) {
-    return "";
-  }
-
-  // если есть любой текст (например "меню") → зеленая кнопка "Меню"
-  return `<span class="mini-res-menu mini-res-menu--yes">Меню</span>`;
-}
 // оставь свой реальный URL как был у тебя в файле
 
 const ACTIVE_MINUTES = 10; // бронь "активна" ещё 10 минут после времени
@@ -159,20 +143,7 @@ function rangeForMode(){
   }
   return { start, end };
 }
-function menuBadgeHtml(menuRaw) {
-  const v = String(menuRaw || "").trim();
-  const key = v.toLowerCase();
 
-  if (!v) {
-    return `<span class="mini-res-menu mini-res-menu--unknown">Меню ?</span>`;
-  }
-
-  if (["немає", "нема", "нет", "no", "none"].includes(key)) {
-    return "";
-  }
-
-  return `<span class="mini-res-menu mini-res-menu--yes">Меню</span>`;
-}
 /* ================== RENDER ================== */
 function render(){
   if(!elDays) return;
@@ -249,64 +220,6 @@ function render(){
   }
 }
 
-function renderItem(item){
-  const isQ = isQuandoo(item);
-  const cancelled = isCancelled(item);
-
-  const dt = item._dt;
-  const past = isPast(dt, ACTIVE_MINUTES);
-
-  const srcBadge = isQ ? `<span class="res-badge res-badge--quandoo">Quandoo</span>`
-                       : `<span class="res-badge res-badge--manual">ручн.</span>`;
-
-  const cancelBadge = cancelled ? `<span class="res-badge res-badge--cancelled">Отменено</span>` : "";
-
-  const { shortName, rest } = isQ ? splitQuandoo(item.from) : { shortName: (item.from||"—"), rest:"" };
-
-  const wrap = document.createElement("div");
-  wrap.className = "res-item";
-  if(past) wrap.classList.add("is-past");
-  if(cancelled) wrap.classList.add("is-cancelled");
-
-  // details block only for quandoo extra
-  const hasDetails = isQ && rest;
-
-  wrap.innerHTML = `
-    <div style="min-width:0; width:100%;">
-      <div class="res-item__left">
-        <div class="res-time">${escapeHtml(hhmm(dt))}</div>
-        <div class="res-meta">${escapeHtml(String(item.guests||""))} гостей</div>
-        <div class="res-item__name">${escapeHtml(shortName || "—")}</div>
-      </div>
-
-      ${hasDetails ? `<div class="res-details">${escapeHtml(rest)}</div>` : ``}
-    </div>
-
-    <div class="res-item__right">
-      ${srcBadge}
-      ${cancelBadge}
-      ${hasDetails ? `<button class="res-btn" type="button" data-act="more">Подробнее</button>` : ``}
-      ${(!isQ) ? `<button class="res-btn" type="button" data-act="edit">Ред.</button>` : ``}
-    </div>
-  `;
-
-  // handlers
-  if(hasDetails){
-    const btnMore = wrap.querySelector('[data-act="more"]');
-    const det = wrap.querySelector(".res-details");
-    btnMore?.addEventListener("click", ()=>{
-      const open = det.classList.toggle("is-open");
-      btnMore.textContent = open ? "Скрыть" : "Подробнее";
-    });
-  }
-
-  if(!isQ){
-    const btnEdit = wrap.querySelector('[data-act="edit"]');
-    btnEdit?.addEventListener("click", ()=> openEdit(item));
-  }
-
-  return wrap;
-}
 
 /* ================== NOW LINE ================== */
 function setNowLine(show){
@@ -453,7 +366,92 @@ async function addManual(){
     setLoading(false);
   }
 }
+function menuBadgeForItem_(item){
+  // показываем ТОЛЬКО для ручных (manual)
+  const isQ = isQuandoo(item);
+  if (isQ) return "";
 
+  // берем только колонку G (menu)
+  const v = String(item?.menu ?? "").trim();
+  const key = v.toLowerCase();
+
+  // пусто -> желтая "Меню ?"
+  if (!v) return `<span class="res-menu-badge res-menu--unknown">Меню ?</span>`;
+
+  // немає/нема/немае/немое/нет/no/none -> ничего
+  if (/^нем/i.test(key) || ["нет","no","none"].includes(key)) return "";
+
+  // зеленая только если ровно "меню" (или "menu")
+  if (key === "меню" || key === "menu") return `<span class="res-menu-badge res-menu--yes">Меню</span>`;
+
+  // любой другой текст -> ничего
+  return "";
+}
+function renderItem(item){
+  const isQ = isQuandoo(item);
+  const cancelled = isCancelled(item);
+
+  const dt = item._dt;
+  const past = isPast(dt, ACTIVE_MINUTES);
+
+  const srcBadge = isQ
+    ? `<span class="res-badge res-badge--quandoo">Quandoo</span>`
+    : `<span class="res-badge res-badge--manual">ручн.</span>`;
+
+  const cancelBadge = cancelled
+    ? `<span class="res-badge res-badge--cancelled">Отменено</span>`
+    : "";
+
+  const { shortName, rest } = isQ
+    ? splitQuandoo(item.from)
+    : { shortName: (item.from||"—"), rest:"" };
+
+  const hasDetails = isQ && rest;
+
+  // ✅ ВОТ ТУТ МЕНЮ-БЕЙДЖ
+  const menuBadge = menuBadgeForItem_(item);
+
+  const wrap = document.createElement("div");
+  wrap.className = "res-item";
+  if(past) wrap.classList.add("is-past");
+  if(cancelled) wrap.classList.add("is-cancelled");
+
+  wrap.innerHTML = `
+    <div style="min-width:0; width:100%;">
+      <div class="res-item__left">
+        <div class="res-time">${escapeHtml(hhmm(dt))}</div>
+        <div class="res-meta">${escapeHtml(String(item.guests||""))} гостей</div>
+        <div class="res-item__name">${escapeHtml(shortName || "—")}</div>
+      </div>
+
+      ${hasDetails ? `<div class="res-details">${escapeHtml(rest)}</div>` : ``}
+    </div>
+
+    <div class="res-item__right">
+      ${menuBadge}
+      ${srcBadge}
+      ${cancelBadge}
+      ${hasDetails ? `<button class="res-btn" type="button" data-act="more">Подробнее</button>` : ``}
+      ${(!isQ) ? `<button class="res-btn" type="button" data-act="edit">Ред.</button>` : ``}
+    </div>
+  `;
+
+  if(hasDetails){
+    const btnMore = wrap.querySelector('[data-act="more"]');
+    const det = wrap.querySelector(".res-details");
+    btnMore?.addEventListener("click", ()=>{
+      const open = det.classList.toggle("is-open");
+      btnMore.textContent = open ? "Скрыть" : "Подробнее";
+    });
+  }
+
+  if(!isQ){
+    const btnEdit = wrap.querySelector('[data-act="edit"]');
+    btnEdit?.addEventListener("click", ()=> openEdit(item));
+  }
+
+  return wrap;
+}
 /* ================== HELPERS ================== */
 function isQuandoo(x){
   return String(x?.source||"").toLowerCase() === "quandoo";
