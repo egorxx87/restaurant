@@ -252,3 +252,21 @@
   .module-btn{ width:100%; }
   .seg{ flex-wrap:wrap; }
 }
+/* ===== TONE DOWN (make UI less bold) ===== */
+
+.task-title{ font-weight:600; }
+
+.task-meta{ font-weight:500; }
+.task-due{ font-weight:500; }
+
+.badge{
+  font-weight:600;
+  font-size:11px;
+}
+
+.task-comment{ font-weight:500; }
+
+.form-input{ font-weight:500; }
+
+.pill{ font-weight:600; }
+.pill--active{ font-weight:700; }
