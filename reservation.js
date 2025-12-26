@@ -1,8 +1,6 @@
 const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwNlMF6GEshtn2-5C1n-EsaCRkNZa2xPOQ2mA2zfdYvZyEIl3JSk4evG2NgkCMQaUdqaA/exec";
 
-
 // оставь свой реальный URL как был у тебя в файле
-
 const ACTIVE_MINUTES = 10; // бронь "активна" ещё 10 минут после времени
 
 /* ================== DOM ================== */
@@ -25,6 +23,10 @@ const nConfirmed = document.getElementById("new-confirmed");
 const nDate = document.getElementById("new-date");
 const nTime = document.getElementById("new-time");
 const nGuests = document.getElementById("new-guests");
+
+// ✅ НОВОЕ: место/стол (manual)
+const nTable = document.getElementById("new-table");
+
 const nFrom = document.getElementById("new-from");
 const nEmail = document.getElementById("new-email");
 const nPhone = document.getElementById("new-phone");
@@ -39,6 +41,10 @@ const eConfirmed = document.getElementById("edit-confirmed");
 const eDate = document.getElementById("edit-date");
 const eTime = document.getElementById("edit-time");
 const eGuests = document.getElementById("edit-guests");
+
+// ✅ НОВОЕ: место/стол (manual)
+const eTable = document.getElementById("edit-table");
+
 const eFrom = document.getElementById("edit-from");
 const eEmail = document.getElementById("edit-email");
 const ePhone = document.getElementById("edit-phone");
@@ -60,7 +66,7 @@ function init(){
   btnAdd?.addEventListener("click", addManual);
 
   // enter = add
-  [nDate,nTime,nGuests,nFrom,nEmail,nPhone,nNote].forEach(inp=>{
+  [nDate,nTime,nGuests,nTable,nFrom,nEmail,nPhone,nNote].forEach(inp=>{
     inp?.addEventListener("keydown", (e)=>{ if(e.key==="Enter") addManual(); });
   });
 
@@ -98,6 +104,71 @@ async function fetchAll(){
   }
 }
 
+/* ================== FIX MANUAL FIELD MAPPING ================== */
+function looksLikeEmail_(s){
+  return /@/.test(String(s||"").trim());
+}
+function looksLikePhone_(s){
+  const v = String(s||"").trim();
+  if(!v) return false;
+  if(/^\+?\d[\d\s\-()]{5,}$/.test(v)) return true;
+  const digits = v.replace(/[^\d]/g,"");
+  return digits.length >= 6;
+}
+
+/**
+ * ✅ Чиним ТОЛЬКО manual:
+ * - место/стол должно быть отдельным полем (table)
+ * - имя должно быть в from
+ * - email в email
+ * - телефон в phone
+ *
+ * Ловим твой кейс со скрина:
+ * from = "Stuberl" (это стол)
+ * email = "Weingant" (это имя)
+ * note = "6644341520" (это телефон)
+ */
+function fixManualFields_(x){
+  if (isQuandoo(x)) return x;
+  const out = { ...x };
+
+  // 1) стол/место: у тебя часто это колонка "Стіл" => stil
+  const tableCandidate =
+    out.table ?? out.place ?? out.area ?? out.room ?? out.steel ?? out.stil ?? out.style;
+
+  if (tableCandidate != null && String(tableCandidate).trim() !== "") {
+    out.table = String(tableCandidate).trim();
+  } else {
+    out.table = String(out.table || "").trim();
+  }
+
+  // нормализуем строки
+  out.from  = String(out.from  || "").trim();
+  out.email = String(out.email || "").trim();
+  out.phone = String(out.phone || "").trim();
+  out.note  = String(out.note  || "").trim();
+
+  // 2) если телефон по ошибке попал в note — переносим в phone
+  if (!out.phone && looksLikePhone_(out.note)) {
+    out.phone = out.note;
+    out.note = "";
+  }
+
+  // 3) если "email" на самом деле имя (нет @),
+  // и "from" равен столу (или from пустой) — переносим "email" -> from
+  if (out.email && !looksLikeEmail_(out.email)) {
+    const fromLooksLikeTable = !!out.table && out.from && out.from === out.table;
+    const fromEmpty = !out.from;
+
+    if (fromLooksLikeTable || fromEmpty) {
+      out.from = out.email;   // имя
+      out.email = "";         // email пусто
+    }
+  }
+
+  return out;
+}
+
 /* ================== FILTER RULES ================== */
 /**
  * - Не показываем прошлые дни (вчера и раньше)
@@ -105,6 +176,9 @@ async function fetchAll(){
  * - Не показываем без времени HH:MM (all-day / multi-day)
  */
 function normalizeAndKeep(x){
+  // ✅ сначала чинить manual поля
+  x = fixManualFields_(x);
+
   const date = String(x?.date||"").trim();
   const time = String(x?.time||"").trim();
 
@@ -220,7 +294,6 @@ function render(){
   }
 }
 
-
 /* ================== NOW LINE ================== */
 function setNowLine(show){
   if(!nowLine) return;
@@ -271,15 +344,24 @@ window.addEventListener("resize", ()=> { if(mode==="today") positionNowLine(); }
 
 /* ================== EDIT MODAL (manual) ================== */
 function openEdit(item){
+  // ✅ чинить на всякий случай прямо тут
+  item = fixManualFields_(item);
+
   editRowId = item.row;
 
   eConfirmed.checked = !!item.confirmed;
   eDate.value = String(item.date||"");
   eTime.value = String(item.time||"");
   eGuests.value = String(item.guests||"");
+
+  // ✅ место/стол
+  eTable.value = String(item.table || item.area || "").trim();
+
   eFrom.value = String(item.from||"");
   eEmail.value = String(item.email||"");
   ePhone.value = String(item.phone||"");
+
+  // note/menu2 как было
   eNote.value = String(item.note||item.menu2||"");
 
   modal.classList.remove("res-modal--hidden");
@@ -291,6 +373,11 @@ function openEdit(item){
       date: (eDate.value||"").trim(),
       time: (eTime.value||"").trim(),
       guests: (eGuests.value||"").trim(),
+
+      // ✅ сохраняем место/стол в table + дублируем в area (если backend ждёт area)
+      table: (eTable.value||"").trim(),
+      area:  (eTable.value||"").trim(),
+
       from: (eFrom.value||"").trim(),
       email: (eEmail.value||"").trim(),
       phone: (ePhone.value||"").trim(),
@@ -335,6 +422,11 @@ async function addManual(){
     date: (nDate.value||"").trim(),
     time: (nTime.value||"").trim(),
     guests: (nGuests.value||"").trim(),
+
+    // ✅ место/стол
+    table: (nTable?.value||"").trim(),
+    area:  (nTable?.value||"").trim(),
+
     from: (nFrom.value||"").trim(),
     email: (nEmail.value||"").trim(),
     phone: (nPhone.value||"").trim(),
@@ -357,7 +449,7 @@ async function addManual(){
 
     toast("Додано ✅");
     nConfirmed.checked = false;
-    [nDate,nTime,nGuests,nFrom,nEmail,nPhone,nNote].forEach(i=> i.value="");
+    [nDate,nTime,nGuests,nTable,nFrom,nEmail,nPhone,nNote].forEach(i=>{ if(i) i.value=""; });
     await fetchAll();
   }catch(err){
     console.error(err);
@@ -366,6 +458,7 @@ async function addManual(){
     setLoading(false);
   }
 }
+
 function menuBadgeForItem_(item){
   // показываем ТОЛЬКО для ручных (manual)
   const isQ = isQuandoo(item);
@@ -387,7 +480,11 @@ function menuBadgeForItem_(item){
   // любой другой текст -> ничего
   return "";
 }
+
 function renderItem(item){
+  // ✅ чинить manual поля и тут тоже
+  item = fixManualFields_(item);
+
   const isQ = isQuandoo(item);
   const cancelled = isCancelled(item);
 
@@ -408,8 +505,14 @@ function renderItem(item){
 
   const hasDetails = isQ && rest;
 
-  // ✅ ВОТ ТУТ МЕНЮ-БЕЙДЖ
+  // ✅ МЕНЮ-БЕЙДЖ
   const menuBadge = menuBadgeForItem_(item);
+
+  // ✅ стол/место только для manual
+  // ✅ стол/место только для manual (колонка H = stil/table/area)
+// если пусто — не показываем вообще
+const rawTable = !isQ ? String(item.stil || item.table || item.area || item.style || "").trim() : "";
+const tableLabel = (!isQ && rawTable) ? `Стіл: ${rawTable}` : "";
 
   const wrap = document.createElement("div");
   wrap.className = "res-item";
@@ -421,6 +524,7 @@ function renderItem(item){
       <div class="res-item__left">
         <div class="res-time">${escapeHtml(hhmm(dt))}</div>
         <div class="res-meta">${escapeHtml(String(item.guests||""))} гостей</div>
+        ${(!isQ && tableLabel) ? `<div class="res-meta">${escapeHtml(tableLabel)}</div>` : ``}
         <div class="res-item__name">${escapeHtml(shortName || "—")}</div>
       </div>
 
@@ -452,6 +556,7 @@ function renderItem(item){
 
   return wrap;
 }
+
 /* ================== HELPERS ================== */
 function isQuandoo(x){
   return String(x?.source||"").toLowerCase() === "quandoo";
