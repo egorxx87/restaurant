@@ -1,4 +1,4 @@
-// mini_events.js — показывает 3 колонки: Сьогодні / Завтра / Цього тижня
+// mini_events.js — 3 колонки: Сьогодні / Завтра / Цього тижня
 // backend: WebApp action=gcal_events&range=today|tomorrow|week
 // response: { ok:true, events:[{summary,start,allDay,calendarType}] }
 
@@ -26,7 +26,6 @@ async function loadMiniEventsInto_(range, elementId, limit, compactForDay){
   try{
     const url = `${MINI_CALENDAR_API_URL}?action=gcal_events&range=${encodeURIComponent(range)}&_=${Date.now()}`;
 
-    // GET надёжнее, чем POST для WebApp
     const res = await fetch(url, { method: "GET", cache: "no-store" });
     const text = await res.text();
 
@@ -59,14 +58,21 @@ async function loadMiniEventsInto_(range, elementId, limit, compactForDay){
 
 function renderMiniItem_(e, compactForDay){
   const type = String(e.calendarType || "").toLowerCase();
-  const cls  = (type === "birthday") ? "mini-event mini-event--bday" : "mini-event mini-event--holiday";
+  const isBday = type === "birthday";
+
+  const cls = isBday
+    ? "mini-event mini-event--bday"
+    : "mini-event mini-event--holiday";
 
   const title = cleanTitle_(String(e.summary || "(без назви)"));
   const prefix = compactForDay ? formatMiniPrefixCompact_(e) : formatMiniPrefixFull_(e);
 
+  const badge = isBday ? "ДР" : "Свято";
+
   return `<div class="${cls}">
     <span class="mini-event__time">${escapeHtml_(prefix)}</span>
     <span class="mini-event__title">${escapeHtml_(title)}</span>
+    <span class="mini-event__badge">${badge}</span>
   </div>`;
 }
 
@@ -79,9 +85,6 @@ function cleanTitle_(s){
 }
 
 function formatMiniPrefixCompact_(e){
-  // для Сьогодні/Завтра:
-  // - allDay => "весь день"
-  // - timed  => "HH:MM"
   if (!e || !e.start) return "";
   if (e.allDay) return "весь день";
   const d = new Date(e.start);
@@ -91,7 +94,6 @@ function formatMiniPrefixCompact_(e){
 }
 
 function formatMiniPrefixFull_(e){
-  // для Тижня: "Пн 27.12" или "Пн 27.12 18:30"
   if (!e || !e.start) return "";
   const d = new Date(e.start);
 

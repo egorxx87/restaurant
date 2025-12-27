@@ -1,4 +1,4 @@
-/* ===== MINI EVENTS (compact, 3 columns) ===== */
+/* ===== MINI EVENTS (compact, 3 columns + legend) ===== */
 
 .mini-events{
   margin: 8px 0 14px;
@@ -22,15 +22,50 @@
   background: #fff;
 }
 
+/* header row with legend */
+.mini-events__header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
 .mini-events__colTitle{
   font-size: 12px;
   font-weight: 900;
   color: #111827;
-  margin-bottom: 6px;
   line-height: 1.1;
+  margin: 0;
 }
 
-/* list: no forced height */
+.mini-events__legend{
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 900;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.mini-events__legendItem{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mini-events__dot{
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.mini-events__dot--holiday{ background: #ef4444; }
+.mini-events__dot--bday{ background: #a855f7; }
+
+/* list */
 .mini-events__list{
   display: flex;
   flex-direction: column;
@@ -38,7 +73,7 @@
   min-height: 0;
 }
 
-/* item: smaller + denser */
+/* item: dense */
 .mini-event{
   display: flex;
   align-items: center;
@@ -49,17 +84,14 @@
   border-radius: 10px;
   background: #fbfdff;
   line-height: 1.15;
+
+  position: relative;
+  padding-left: 10px; /* space for left bar */
 }
 
-.mini-event--bday::before{
-  content: "🎂";
-}
+.mini-event--holiday{ border-left: 3px solid #ef4444; }
+.mini-event--bday{ border-left: 3px solid #a855f7; }
 
-.mini-event--holiday::before{
-  content: "🇦🇹";
-}
-
-/* time: narrower */
 .mini-event__time{
   color: #6b7280;
   font-weight: 900;
@@ -68,11 +100,29 @@
   white-space: nowrap;
 }
 
-/* title: smaller */
 .mini-event__title{
   font-weight: 900;
   font-size: 12px;
   color: #111827;
+  flex: 1;
+}
+
+.mini-event__badge{
+  font-size: 10px;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.mini-event--holiday .mini-event__badge{
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.mini-event--bday .mini-event__badge{
+  background: #f3e8ff;
+  color: #6b21a8;
 }
 
 /* states */
@@ -100,10 +150,7 @@
   .mini-events--triple{
     grid-template-columns: 1fr;
   }
-  .mini-events{
-    padding: 8px 10px;
-  }
-  .mini-event__time{
-    min-width: 54px;
+  .mini-events__legend{
+    font-size: 10px;
   }
 }

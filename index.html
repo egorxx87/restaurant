@@ -25,19 +25,43 @@
       <a class="top-nav__btn" href="calendar.html">Календар</a>
     </div>
 <!-- MINI EVENTS (Birthdays + Holidays) -->
+<!-- MINI EVENTS (Birthdays + Holidays) -->
 <div class="mini-events mini-events--triple">
+
   <div class="mini-events__col">
-    <div class="mini-events__colTitle">Сьогодні</div>
+    <div class="mini-events__header">
+      <div class="mini-events__colTitle">Сьогодні</div>
+
+      <!-- Legend (показываем один раз) -->
+      <div class="mini-events__legend" title="Позначення типів подій">
+        <span class="mini-events__legendItem">
+          <span class="mini-events__dot mini-events__dot--holiday"></span> Свято
+        </span>
+        <span class="mini-events__legendItem">
+          <span class="mini-events__dot mini-events__dot--bday"></span> ДР
+        </span>
+      </div>
+    </div>
+
     <div class="mini-events__list" id="miniEventsToday">Завантаження…</div>
   </div>
+
   <div class="mini-events__col">
-    <div class="mini-events__colTitle">Завтра</div>
+    <div class="mini-events__header">
+      <div class="mini-events__colTitle">Завтра</div>
+    </div>
+
     <div class="mini-events__list" id="miniEventsTomorrow">Завантаження…</div>
   </div>
+
   <div class="mini-events__col">
-    <div class="mini-events__colTitle">Цього тижня</div>
+    <div class="mini-events__header">
+      <div class="mini-events__colTitle">Цього тижня</div>
+    </div>
+
     <div class="mini-events__list" id="miniEventsWeek">Завантаження…</div>
   </div>
+
 </div>
     <main>
       <div class="dashboard-grid">
