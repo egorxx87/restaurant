@@ -118,3 +118,248 @@ function escapeHtml_(s){
     .replaceAll('"',"&quot;")
     .replaceAll("'","&#039;");
 }
+window.taLineCb = function(d){
+  const el = document.getElementById("taLine");
+  if(!el) return;
+
+  if(!d || !d.ok){
+    el.innerHTML = `<span class="muted">TA недоступний</span>`;
+    return;
+  }
+
+  const r = Number(d.rating);
+  const n = Number(d.reviewsCount);
+  const isNum = (x) => Number.isFinite(x);
+
+  function needed5(r,n,t){
+    if(!isNum(r)||!isNum(n)||!isNum(t)) return null;
+    if(t>=5) return null;
+    if(r>=t) return 0;
+    return Math.ceil(((t-r)*n)/(5-t));
+  }
+
+  function pct(r,t){
+    if(!isNum(r)||!isNum(t)||t<=0) return null;
+    return Math.max(0, Math.min(100, Math.round((r/t)*100)));
+  }
+
+  function color(r,t){
+    const delta = t-r;
+    if(delta<=0.10) return "green";
+    if(delta<=0.30) return "yellow";
+    return "red";
+  }
+
+  const badge = `
+    <span class="ta-badge" title="TripAdvisor">
+      <span class="ta-badge__icon">TA</span>
+      <span class="ta-badge__text">Trip</span>
+    </span>
+  `;
+
+  const parts = [];
+  if(isNum(r)) parts.push(`⭐${r}`);
+  if(isNum(n)) parts.push(`📝${n}`);
+  if(d.rankingText) parts.push(`🏆${d.rankingText}`);
+
+  const targets = [4.3,4.5,4.7];
+  const chips = targets.map(t=>{
+    const k = needed5(r,n,t);
+    const p = pct(r,t);
+    const c = color(r,t);
+
+    // супер коротко:
+    // "4.5 ≈209" + "89%" (проценты спрячутся на мобиле CSS-ом)
+    const left = (k===0) ? `${t} ✓` : `${t} ≈${k}`;
+    const right = (p==null) ? "" : `<span class="ta-chip__pct">${p}%</span>`;
+    return `<span class="ta-chip ta-chip--${c}">${left} ${right}</span>`;
+  }).join(" ");
+
+  const sep = `<span class="ta-sep">·</span>`;
+  el.innerHTML = [badge, parts.join(` ${sep} `), chips].join(` ${sep} `);
+};// ===== TripAdvisor compact line (no %, colored targets, green "T" logo) =====
+(function () {
+  const TA_WEBAPP =
+    "https://script.google.com/macros/s/AKfycbxXfbBfEcrEVg3-gzA5CIeheUQTUbwbtTx5ej_mezADlUKsX00Glpj-Sc9OFiYePH1U/exec";
+
+  const TARGETS = [4.3, 4.5, 4.7];
+
+  const el = document.getElementById("taLine");
+  if (!el) return;
+
+  // helpers
+  const isNum = (x) => Number.isFinite(x);
+
+  function needed5Stars(r, n, t) {
+    if (!isNum(r) || !isNum(n) || !isNum(t)) return null;
+    if (t >= 5) return null;
+    if (r >= t) return 0;
+    return Math.ceil(((t - r) * n) / (5 - t));
+  }
+
+  // color by how far target is from current rating
+  function targetColorClass(r, t) {
+    const delta = t - r;
+    if (delta <= 0) return "ta-num--green";     // already reached
+    if (delta <= 0.10) return "ta-num--green";  // close
+    if (delta <= 0.30) return "ta-num--yellow"; // medium
+    return "ta-num--red";                       // far
+  }
+
+  function extractRankCompact(text) {
+    // -> "#667/5796"
+    if (!text) return null;
+    const m = String(text).match(/(\d{1,4})\D+([\d\s,]{3,10})/);
+    if (!m) return null;
+    const rank = m[1];
+    const total = m[2].replace(/[^\d]/g, "");
+    if (!rank || !total) return null;
+    return `#${rank}/${total}`;
+  }
+
+  // 1) callback must exist BEFORE script loads
+  window.taLineCb = function (d) {
+    if (!d || !d.ok) {
+      el.innerHTML = `<span class="ta-muted">TripAdvisor недоступний</span>`;
+      return;
+    }
+
+    const r = Number(d.rating);
+    const n = Number(d.reviewsCount);
+
+    const badge = `
+      <span class="ta-badge" title="TripAdvisor">
+        <span class="ta-badge__icon">T</span>
+      </span>
+    `;
+
+    const sep = `<span class="ta-sep">·</span>`;
+
+    const parts = [];
+    if (isNum(r)) parts.push(`<span class="ta-item">⭐ ${r.toFixed(1)}</span>`);
+    if (isNum(n)) parts.push(`<span class="ta-item">📝 ${n}</span>`);
+
+    // ranking compact "#667/5796"
+    const rankCompact = extractRankCompact(d.rankingText);
+    if (rankCompact) parts.push(`<span class="ta-item ta-rank">🏆 ${rankCompact}</span>`);
+
+    // targets: "4.5 ≈209"
+    const chips = TARGETS.map((t) => {
+      const k = needed5Stars(r, n, t);
+      const cls = targetColorClass(r, t);
+
+      const text =
+        k === 0 ? `${t} ✓` :
+        (k == null ? `${t} —` : `${t} ≈${k}`);
+
+      return `<span class="ta-num ${cls}">${text}</span>`;
+    }).join(` ${sep} `);
+
+    el.innerHTML = [
+      badge,
+      parts.join(` ${sep} `),
+      chips
+    ].filter(Boolean).join(` ${sep} `);
+  };
+
+  // 2) load JSONP
+  const s = document.createElement("script");
+  s.src = `${TA_WEBAPP}?action=tripadvisor&callback=taLineCb&_=${Date.now()}`;
+  s.onerror = () => {
+    el.innerHTML = `<span class="ta-muted">TripAdvisor load error</span>`;
+  };
+  document.body.appendChild(s);
+})();
+// ===== TripAdvisor compact line (no %, colored targets, green "T" logo) =====
+(function () {
+  const TA_WEBAPP =
+    "https://script.google.com/macros/s/AKfycbxXfbBfEcrEVg3-gzA5CIeheUQTUbwbtTx5ej_mezADlUKsX00Glpj-Sc9OFiYePH1U/exec";
+
+  const TARGETS = [4.3, 4.5, 4.7];
+
+  const el = document.getElementById("taLine");
+  if (!el) return;
+
+  // helpers
+  const isNum = (x) => Number.isFinite(x);
+
+  function needed5Stars(r, n, t) {
+    if (!isNum(r) || !isNum(n) || !isNum(t)) return null;
+    if (t >= 5) return null;
+    if (r >= t) return 0;
+    return Math.ceil(((t - r) * n) / (5 - t));
+  }
+
+  // color by how far target is from current rating
+  function targetColorClass(r, t) {
+    const delta = t - r;
+    if (delta <= 0) return "ta-num--green";     // already reached
+    if (delta <= 0.10) return "ta-num--green";  // close
+    if (delta <= 0.30) return "ta-num--yellow"; // medium
+    return "ta-num--red";                       // far
+  }
+
+  function extractRankCompact(text) {
+    // -> "#667/5796"
+    if (!text) return null;
+    const m = String(text).match(/(\d{1,4})\D+([\d\s,]{3,10})/);
+    if (!m) return null;
+    const rank = m[1];
+    const total = m[2].replace(/[^\d]/g, "");
+    if (!rank || !total) return null;
+    return `#${rank}/${total}`;
+  }
+
+  // 1) callback must exist BEFORE script loads
+  window.taLineCb = function (d) {
+    if (!d || !d.ok) {
+      el.innerHTML = `<span class="ta-muted">TripAdvisor недоступний</span>`;
+      return;
+    }
+
+    const r = Number(d.rating);
+    const n = Number(d.reviewsCount);
+
+    const badge = `
+      <span class="ta-badge" title="TripAdvisor">
+        <span class="ta-badge__icon">T</span>
+      </span>
+    `;
+
+    const sep = `<span class="ta-sep">·</span>`;
+
+    const parts = [];
+    if (isNum(r)) parts.push(`<span class="ta-item">⭐ ${r.toFixed(1)}</span>`);
+    if (isNum(n)) parts.push(`<span class="ta-item">📝 ${n}</span>`);
+
+    // ranking compact "#667/5796"
+    const rankCompact = extractRankCompact(d.rankingText);
+    if (rankCompact) parts.push(`<span class="ta-item ta-rank">🏆 ${rankCompact}</span>`);
+
+    // targets: "4.5 ≈209"
+    const chips = TARGETS.map((t) => {
+      const k = needed5Stars(r, n, t);
+      const cls = targetColorClass(r, t);
+
+      const text =
+        k === 0 ? `${t} ✓` :
+        (k == null ? `${t} —` : `${t} ≈${k}`);
+
+      return `<span class="ta-num ${cls}">${text}</span>`;
+    }).join(` ${sep} `);
+
+    el.innerHTML = [
+      badge,
+      parts.join(` ${sep} `),
+      chips
+    ].filter(Boolean).join(` ${sep} `);
+  };
+
+  // 2) load JSONP
+  const s = document.createElement("script");
+  s.src = `${TA_WEBAPP}?action=tripadvisor&callback=taLineCb&_=${Date.now()}`;
+  s.onerror = () => {
+    el.innerHTML = `<span class="ta-muted">TripAdvisor load error</span>`;
+  };
+  document.body.appendChild(s);
+})();
