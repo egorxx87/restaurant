@@ -74,7 +74,13 @@
   <!-- Modal -->
   <div class="modal-backdrop modal-hidden" id="taskModal">
     <div class="modal">
-      <div class="modal-title" id="taskModalTitle">Нова задача</div>
+      <div class="modal-header">
+  <div class="modal-title" id="taskModalTitle">Нова задача</div>
+
+  <button class="modal-close" type="button" aria-label="Закрити" onclick="closeModal(true)">
+    ✕
+  </button>
+</div>
 
      <div class="form-grid">
   <div class="full">

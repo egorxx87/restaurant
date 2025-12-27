@@ -1,4 +1,4 @@
-// tasks.js
+//тутdocument.getElementByIdtasks.js
 
 // TASKS WebApp URL (/exec)
 const TASKS_API_URL =
@@ -303,6 +303,7 @@ function openModalNew() {
   if (sel) sel.value = "";
 
   document.getElementById("taskModal")?.classList.remove("modal-hidden");
+    document.body.classList.add("modal-open");
 }
 
 function openModalEdit(id) {
@@ -324,11 +325,16 @@ function openModalEdit(id) {
   if (sel) sel.value = t.assignee || "";
 
   document.getElementById("taskModal")?.classList.remove("modal-hidden");
+    document.body.classList.add("modal-open");
 }
 
 function closeModal(force = false) {
   if (isSaving && !force) return;
-  document.getElementById("taskModal")?.classList.add("modal-hidden");
+
+  const modal = document.getElementById("taskModal");
+  if (modal) modal.classList.add("modal-hidden");
+
+  document.body.classList.remove("modal-open");
 }
 
 async function saveTask() {
@@ -365,7 +371,7 @@ async function saveTask() {
     await loadActive();
 
     // закрываем модалку ПРИНУДИТЕЛЬНО (пока isSaving ещё true)
-    document.getElementById("taskModal")?.classList.add("modal-hidden");
+    closeModal(true);
   } catch (e) {
     console.error(e);
     alert("Помилка збереження");
@@ -529,3 +535,10 @@ function jsonp(url) {
     document.body.appendChild(script);
   });
 }
+function setVhUnit(){
+  const vh = window.innerHeight * 0.01;
+  document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+setVhUnit();
+window.addEventListener('resize', setVhUnit);
+window.addEventListener('orientationchange', setVhUnit);
