@@ -364,8 +364,9 @@ function openEdit(item){
   // note/menu2 как было
   eNote.value = String(item.note||item.menu2||"");
 
-  modal.classList.remove("res-modal--hidden");
-  modal.setAttribute("aria-hidden", "false");
+modal.classList.remove("res-modal--hidden");
+modal.setAttribute("aria-hidden", "false");
+document.body.classList.add("res-modal-open");
 
   mSave.onclick = async ()=>{
     const patch = {
@@ -392,7 +393,8 @@ function openEdit(item){
 function closeModal(){
   editRowId = null;
   modal.classList.add("res-modal--hidden");
-  modal.setAttribute("aria-hidden", "true");
+modal.setAttribute("aria-hidden", "true");
+document.body.classList.remove("res-modal-open");
 }
 
 /* ================== WRITE API ================== */
@@ -641,3 +643,10 @@ function escapeHtml(s){
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
   }[ch]));
 }
+function setVhUnit(){
+  const vh = window.innerHeight * 0.01;
+  document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+setVhUnit();
+window.addEventListener('resize', setVhUnit);
+window.addEventListener('orientationchange', setVhUnit);
