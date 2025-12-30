@@ -1251,3 +1251,67 @@ body {
     grid-column: span 2;
   }
 }
+/* ===== FIX ONLY: Home reservations list (Today/Tomorrow) ===== */
+#res-today-times .mini-res-row,
+#res-tomorrow-times .mini-res-row{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  gap:10px !important;
+
+  padding:10px 12px !important;
+  border-radius:16px !important;
+  min-height:48px !important;
+
+  /* чтобы не распирало */
+  width:100% !important;
+  box-sizing:border-box !important;
+}
+
+#res-today-times .mini-res-time,
+#res-tomorrow-times .mini-res-time{
+  flex:0 0 68px !important;
+  font-weight:900 !important;
+  white-space:nowrap !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+#res-today-times .mini-res-guests,
+#res-tomorrow-times .mini-res-guests{
+  flex:0 0 26px !important;
+  text-align:center !important;
+  font-weight:900 !important;
+}
+
+#res-today-times .mini-res-right,
+#res-tomorrow-times .mini-res-right{
+  flex:1 1 auto !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-end !important;
+  gap:8px !important;
+
+  /* КЛЮЧ: не переносить бейджи/скасовано */
+  white-space:nowrap !important;
+  min-width:0 !important;
+}
+
+#res-today-times .mini-res-badge,
+#res-tomorrow-times .mini-res-badge{
+  flex:0 0 auto !important;
+}
+
+#res-today-times .mini-res-cancel,
+#res-tomorrow-times .mini-res-cancel{
+  flex:0 0 auto !important;
+}
+
+/* чтобы past/cancelled НЕ ломали размеры */
+#res-today-times .mini-res-row.is-past,
+#res-tomorrow-times .mini-res-row.is-past{
+  opacity:0.55 !important;
+}
+#res-today-times .mini-res-row.is-cancelled,
+#res-tomorrow-times .mini-res-row.is-cancelled{
+  opacity:0.45 !important;
+}

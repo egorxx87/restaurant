@@ -235,3 +235,205 @@
   color: #6b7280;
   overflow-wrap: anywhere;
 }
+/* ===== MINI RESERVATIONS — FIX LAYOUT ===== */
+
+/* строка резервации */
+.mini-res-row{
+  display: grid;
+  grid-template-columns: 64px 28px 1fr; /* время | гости | справа */
+  align-items: center;
+  gap: 10px;
+
+  padding: 8px 12px;
+  min-height: 44px;
+
+  border: 1px solid #eef2f7;
+  border-radius: 14px;
+  background: #fff;
+}
+
+/* прошедшие — ТОЛЬКО бледнее, без смещения */
+.mini-res-row.is-past{
+  opacity: 0.55;
+}
+
+/* отменённые — красный текст, но НЕ ломаем layout */
+.mini-res-row.is-cancelled{
+  background: #fff;
+}
+
+/* время */
+.mini-res-time{
+  font-weight: 900;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* гости */
+.mini-res-guests{
+  font-weight: 900;
+  text-align: center;
+}
+
+/* правая часть */
+.mini-res-right{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+/* бейджи */
+.mini-res-badge{
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* Quandoo */
+.mini-res-badge.bq{
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+/* ручные */
+.mini-res-badge.bm{
+  background: #f3f4f6;
+  color: #374151;
+}
+
+/* отменено */
+.mini-res-cancel{
+  color: #b91c1c;
+  font-weight: 900;
+  font-size: 12px;
+}
+
+/* кнопка "Показати всі" */
+.mini-res-btn{
+  margin-top: 8px;
+  width: 100%;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  font-weight: 900;
+}/* ===== MINI RESERVATIONS — FIX LAYOUT ===== */
+
+/* строка резервации */
+.mini-res-row{
+  display: grid;
+  grid-template-columns: 64px 28px 1fr; /* время | гости | справа */
+  align-items: center;
+  gap: 10px;
+
+  padding: 8px 12px;
+  min-height: 44px;
+
+  border: 1px solid #eef2f7;
+  border-radius: 14px;
+  background: #fff;
+}
+
+/* прошедшие — ТОЛЬКО бледнее, без смещения */
+.mini-res-row.is-past{
+  opacity: 0.55;
+}
+
+/* отменённые — красный текст, но НЕ ломаем layout */
+.mini-res-row.is-cancelled{
+  background: #fff;
+}
+
+/* время */
+.mini-res-time{
+  font-weight: 900;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* гости */
+.mini-res-guests{
+  font-weight: 900;
+  text-align: center;
+}
+
+/* правая часть */
+.mini-res-right{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+/* бейджи */
+.mini-res-badge{
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* Quandoo */
+.mini-res-badge.bq{
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+/* ручные */
+.mini-res-badge.bm{
+  background: #f3f4f6;
+  color: #374151;
+}
+
+/* отменено */
+.mini-res-cancel{
+  color: #b91c1c;
+  font-weight: 900;
+  font-size: 12px;
+}
+
+/* кнопка "Показати всі" */
+.mini-res-btn{
+  margin-top: 8px;
+  width: 100%;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  font-weight: 900;
+}
+/* ===== CANCELLED: simple, safe, no layout changes ===== */
+
+/* скрываем слово "скасовано" */
+#res-today-times .mini-res-row.is-cancelled .mini-res-cancel,
+#res-tomorrow-times .mini-res-row.is-cancelled .mini-res-cancel{
+  display: none !important;
+}
+
+/* делаем строку серой, НЕ прозрачной */
+#res-today-times .mini-res-row.is-cancelled,
+#res-tomorrow-times .mini-res-row.is-cancelled{
+  background: #f3f4f6 !important;
+  border-color: #e5e7eb !important;
+  opacity: 1 !important;
+}
+
+/* всё внутри — серое, тонкое и зачёркнутое */
+#res-today-times .mini-res-row.is-cancelled * ,
+#res-tomorrow-times .mini-res-row.is-cancelled *{
+  color: #9ca3af !important;
+  font-weight: 500 !important;   /* НЕ жирно */
+  text-decoration: line-through;
+}
+
+/* бейджи тоже серые и спокойные */
+#res-today-times .mini-res-row.is-cancelled .mini-res-badge,
+#res-tomorrow-times .mini-res-row.is-cancelled .mini-res-badge{
+  background: #e5e7eb !important;
+  border-color: #d1d5db !important;
+  color: #9ca3af !important;
+}
