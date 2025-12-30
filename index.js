@@ -34,7 +34,12 @@ document.addEventListener("DOMContentLoaded", () => {
   // ✅ события на главной: сегодня/завтра/неделя
   initHomeEvents();
 });
-
+async function fetchJson(url) {
+  const u = url + (url.includes("?") ? "&" : "?") + `_=${Date.now()}`;
+  const res = await fetch(u, { method: "GET", cache: "no-store" });
+  const txt = await res.text();
+  return JSON.parse(txt);
+}
 /* =========================
    DUTY ADMINS
 ========================= */
@@ -47,9 +52,13 @@ async function loadDutyAdminsForOffset(dayOffset, targetId){
     const targetDate = addDays(new Date(), dayOffset);
     const month = formatMonthParam(targetDate);
 
+    // 🔹 загрузка и кэш расписания (fetch-only)
     if (!_schedCache || _schedCache.month !== month){
-      const data = await jsonp(`${SCHEDULE_API_URL}?action=list&month=${month}`);
-      _schedCache = { month, rows: (data && data.rows) ? data.rows : [] };
+      const data = await fetchJson(`${SCHEDULE_API_URL}?action=list&month=${month}`);
+      _schedCache = {
+        month,
+        rows: (data && Array.isArray(data.rows)) ? data.rows : []
+      };
     }
 
     const rows = _schedCache.rows;
@@ -65,14 +74,18 @@ async function loadDutyAdminsForOffset(dayOffset, targetId){
       .sort((a,b) => (a.time || "").localeCompare(b.time || ""));
 
     if (!dayRows.length) {
-      hostEl.textContent = (dayOffset === 0) ? "Немає чергового сьогодні" : "Немає чергового завтра";
+      hostEl.textContent =
+        (dayOffset === 0)
+          ? "Немає чергового сьогодні"
+          : "Немає чергового завтра";
       hideDutyNote();
       return;
     }
 
+    // 🔹 собираем интервалы по администраторам
     const map = new Map();
     dayRows.forEach(r => {
-      for (let i=0; i<ADMIN_COLS; i++){
+      for (let i = 0; i < ADMIN_COLS; i++){
         const n = String(r.admin[i] || "").trim();
         if (!n) continue;
         if (!map.has(n)) map.set(n, []);
@@ -81,7 +94,10 @@ async function loadDutyAdminsForOffset(dayOffset, targetId){
     });
 
     if (!map.size) {
-      hostEl.textContent = (dayOffset === 0) ? "Немає чергового сьогодні" : "Немає чергового завтра";
+      hostEl.textContent =
+        (dayOffset === 0)
+          ? "Немає чергового сьогодні"
+          : "Немає чергового завтра";
       hideDutyNote();
       return;
     }
@@ -93,24 +109,26 @@ async function loadDutyAdminsForOffset(dayOffset, targetId){
       lines.push({ name, text: intervals.join(", ") });
     }
 
-  hostEl.innerHTML = lines.map(x => {
-  const s = String(x.name || "");
+    // 🔹 рендер
+    hostEl.innerHTML = lines.map(x => {
+      const s = String(x.name || "");
 
-  // 1) Берём префикс "DD.MM HH:MM"
-  // 2) Всё остальное считаем названием
-  // 3) Ставим ОДИН пробел между ними
-  const fixedName = s.replace(
-    /^(\d{2}\.\d{2}\s+\d{1,2}:\d{2})\s*(.*)$/,
-    (m, prefix, rest) => rest ? `${prefix} ${rest}` : prefix
-  );
+      // фикс: один пробел между датой/временем и именем
+      const fixedName = s.replace(
+        /^(\d{2}\.\d{2}\s+\d{1,2}:\d{2})\s*(.*)$/,
+        (m, prefix, rest) => rest ? `${prefix} ${rest}` : prefix
+      );
 
-  return `<div style="margin-bottom:8px;">
-    <strong>${escapeHtml(fixedName)}</strong><br>
-    <span>${escapeHtml(x.text)}</span>
-  </div>`;
-}).join("");
+      return `
+        <div style="margin-bottom:8px;">
+          <strong>${escapeHtml(fixedName)}</strong><br>
+          <span>${escapeHtml(x.text)}</span>
+        </div>
+      `;
+    }).join("");
 
     hideDutyNote();
+
   } catch (e) {
     console.error(e);
     hostEl.textContent = "Помилка завантаження";
@@ -339,9 +357,9 @@ async function loadScheduleSummary(dayOffset){
     const month = formatMonthParam(targetDate);
 
     if (!_schedCache || _schedCache.month !== month){
-      const data = await jsonp(`${SCHEDULE_API_URL}?action=list&month=${month}`);
-      _schedCache = { month, rows: (data && data.rows) ? data.rows : [] };
-    }
+  const data = await fetchJson(`${SCHEDULE_API_URL}?action=list&month=${month}`);
+  _schedCache = { month, rows: (data && data.rows) ? data.rows : [] };
+}
 
     const rows = _schedCache.rows;
     const targetISO = toISODate(targetDate);
@@ -412,17 +430,12 @@ async function loadTasksMini(){
   if (!list || !empty) return;
 
   try {
-    const useJsonp = (location.protocol === "file:");
-    let json;
+    // ⬇️ ТОЛЬКО fetch
+    const json = await fetchJson(`${TASKS_API_URL}?action=tasks_list`);
 
-    if (useJsonp) {
-      json = await jsonp(`${TASKS_API_URL}?action=tasks_list`);
-    } else {
-      const res = await fetch(`${TASKS_API_URL}?action=tasks_list`, { method: "GET" });
-      json = await res.json();
+    if (!json || !json.ok) {
+      throw new Error((json && json.error) ? json.error : "tasks_list error");
     }
-
-    if (!json || !json.ok) throw new Error((json && json.error) ? json.error : "tasks_list error");
 
     const data = Array.isArray(json.data) ? json.data : [];
     const open = data.filter(t => (t.status || "open") === "open");
@@ -444,8 +457,14 @@ async function loadTasksMini(){
 
     list.innerHTML =
       top.map(t => {
-        const badgeClass = (t.priority === "red") ? "badge badge--red" : "badge badge--blue";
-        const prText = (t.priority === "red") ? "🔴 Срочно" : "🔵 Звичайно";
+        const badgeClass = (t.priority === "red")
+          ? "badge badge--red"
+          : "badge badge--blue";
+
+        const prText = (t.priority === "red")
+          ? "🔴 Срочно"
+          : "🔵 Звичайно";
+
         const dueStr = formatDueHuman_(t.due);
         const due = dueStr ? `⏳ ${escapeHtml(dueStr)}` : "⏳ без строку";
         const who = String(t.assignee || "").trim();
@@ -453,7 +472,9 @@ async function loadTasksMini(){
         return `
           <div class="task-row" style="padding:10px; cursor:pointer;" onclick="location.href='tasks.html'">
             <div class="task-left">
-              <div class="task-title" style="font-size:14px;">${escapeHtml(t.title || "")}</div>
+              <div class="task-title" style="font-size:14px;">
+                ${escapeHtml(t.title || "")}
+              </div>
               <div class="task-meta" style="margin-top:6px;">
                 <span class="${badgeClass}">${prText}</span>
                 <span class="task-due">${due}</span>
@@ -463,7 +484,11 @@ async function loadTasksMini(){
           </div>
         `;
       }).join("") +
-      (more > 0 ? `<div style="margin-top:8px;color:#6b7280;font-weight:700;">Ще +${more}…</div>` : "");
+      (more > 0
+        ? `<div style="margin-top:8px;color:#6b7280;font-weight:700;">Ще +${more}…</div>`
+        : ""
+      );
+
   } catch (e){
     console.error(e);
     list.innerHTML = `<div class="task-empty">Помилка завантаження задач</div>`;
@@ -609,29 +634,7 @@ function formatDueHuman_(due){
   return s;
 }
 
-function jsonp(url){
-  return new Promise((resolve, reject) => {
-    const cb = "cb_" + Math.random().toString(36).slice(2);
-    const script = document.createElement("script");
-    const sep = url.includes("?") ? "&" : "?";
-    script.src = `${url}${sep}callback=${cb}`;
 
-    window[cb] = (data) => {
-      try { resolve(data); } finally {
-        delete window[cb];
-        script.remove();
-      }
-    };
-
-    script.onerror = () => {
-      delete window[cb];
-      script.remove();
-      reject(new Error("JSONP load failed"));
-    };
-
-    document.body.appendChild(script);
-  });
-}
 
 function escapeHtml(s){
   return String(s || "")
