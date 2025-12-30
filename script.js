@@ -1,12 +1,12 @@
 document.addEventListener("DOMContentLoaded", async () => {
   const SCHEDULE_API_URL =
-    "https://script.google.com/macros/s/AKfycbzagvHUuF_o3O8O6vnZbClW74R9QxKFfCsaGb2hHuSVtcD3uCbsjUwJm89MVdLJVELvYQ/exec";
+    "https://script.google.com/macros/s/AKfycbxbbznamVwMb39TvLR5LpSE7bGk1uWn6Lw1HUH_WKwMboggPyYUXosMbgs-LUo9mRnSMg/exec";
 
   const MODE_DAY = "day";
   const MODE_WEEK = "week";
   const MODE_MONTH = "month";
 
-  // Роли + список имён (для пикера)
+  // Роли + список имён (для пикера) — база. Дальше будет расширяться автоматически.
   const ROLE_OPTIONS = {
     admin: ["Egor", "Karina", "Maxym"],
     kellner: ["Jane", "Mykola", "Zeindi", "Dima", "Vladyslav", "Karina", "Michi", "Egor"],
@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     reinigung: ["Inna", "Tymur", "Oleksandr"]
   };
 
-  // ✅ Нормальная палитра (приятные, читаемые)
+  // Палитра цветов
   const COLOR_PRESETS = [
     "#34d399", "#22c55e", "#16a34a",
     "#60a5fa", "#3b82f6", "#2563eb",
@@ -61,13 +61,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   const statsMonthPrevBtn = document.getElementById("stats-month-prev");
   const statsRoleButtons = document.querySelectorAll("[data-stats-role]");
 
-  // WEEK FILTER (кнопки ролей)
+  // WEEK FILTER
   const weekFilterEl = document.getElementById("week-filter");
   const weekCompactEl = document.getElementById("week-compact-view");
 
-
-  // MONTH FILTER (кнопки ролей в режиме "Месяц")
-  // Создаём динамически (чтобы не править HTML)
+  // MONTH FILTER (динамически)
   const monthFilterEl = document.createElement("div");
   monthFilterEl.id = "month-filter";
   monthFilterEl.className = "week-filter";
@@ -84,8 +82,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   let currentRows = [];
   let pickerState = null;
 
-  // ✅ Colors (shared for all users)
+  // Colors (shared)
   let NAME_COLORS = {};
+
+  // meta poll
+  let _lastMetaVer = null;
+
+  // scroll anchor (mobile jump fix)
+  let _scrollAnchorISO = null;
 
   const statsState = {
     activeSlot: "current",
@@ -95,46 +99,28 @@ document.addEventListener("DOMContentLoaded", async () => {
     slotMapping: { current: "current", previous: "previous" }
   };
 
-  // ============ helpers ============
+  // ==============================
+  // HELPERS
+  // ==============================
   function setLoading(on, text = "Завантаження...") {
     if (!loaderEl) return;
-    loaderTextEl.textContent = text;
+    if (loaderTextEl) loaderTextEl.textContent = text;
     loaderEl.classList.toggle("global-loader--hidden", !on);
-    prevBtn.disabled = on;
-    nextBtn.disabled = on;
-    todayBtn.disabled = on;
-    modeDayBtn.disabled = on;
-    modeWeekBtn.disabled = on;
-    modeMonthBtn.disabled = on;
+
+    if (prevBtn) prevBtn.disabled = on;
+    if (nextBtn) nextBtn.disabled = on;
+    if (todayBtn) todayBtn.disabled = on;
+    if (modeDayBtn) modeDayBtn.disabled = on;
+    if (modeWeekBtn) modeWeekBtn.disabled = on;
+    if (modeMonthBtn) modeMonthBtn.disabled = on;
     if (openStatsBtn) openStatsBtn.disabled = on;
   }
-function toISODate_(d){
-  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
-}
-function shortName_(name){
-  const n = String(name || "").trim();
-  if (!n) return "";
-  // если несколько слов — берём первое
-  const first = n.split(/\s+/)[0];
 
-  // правило сокращения как на скрине:
-  // длинные имена -> первые 4 буквы, короткие -> как есть
-  if (first.length >= 7) return first.slice(0, 4);
-  if (first.length >= 6) return first.slice(0, 4);
-  return first; // 1-5 символов оставляем
-}
-function timePretty_(t){
-  const s = String(t || "");
-  const m = s.match(/^(\d{1,2}):(\d{2})/);
-  if (!m) return s;
-  return `${parseInt(m[1],10)}:${m[2]}`;
-}
-function hourShort_(t){
-  const s = String(t || "");
-  const m = s.match(/^(\d{1,2})/);
-  return m ? String(parseInt(m[1],10)) : s;
-}
   function pad2(n) { return String(n).padStart(2, "0"); }
+
+  function toISODate_(d) {
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  }
 
   function formatDate(d) {
     return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()}`;
@@ -157,7 +143,7 @@ function hourShort_(t){
   function getWeekRange(d) {
     const start = getDayStart(d);
     const day = start.getDay();
-    const diff = (day + 6) % 7; // Monday start
+    const diff = (day + 6) % 7; // Monday
     start.setDate(start.getDate() - diff);
     const end = new Date(start);
     end.setDate(start.getDate() + 6);
@@ -225,77 +211,15 @@ function hourShort_(t){
     return arr;
   }
 
-  // ===== JSONP (для обхода CORS на GET) =====
- // ===== GET helper (fetch first, JSONP fallback) =====
-  async function fetchJson_(url) {
-  const u = url + (url.includes("?") ? "&" : "?") + `_=${Date.now()}`;
-  const res = await fetch(u, { method: "GET", cache: "no-store" });
-  const txt = await res.text();
-  return JSON.parse(txt);
-}
-async function apiGet(url) {
-  const u = url + (url.includes("?") ? "&" : "?") + `_=${Date.now()}`;
-  const res = await fetch(u, { method: "GET", cache: "no-store" });
-  const txt = await res.text();
-  return JSON.parse(txt);
-}
-
-// ===== JSONP (fallback) =====
-
-  // ✅ Load colors once (shared for all users)
-async function loadNameColors() {
-  try {
-    const data = await fetchJson_(`${SCHEDULE_API_URL}?action=get_colors`);
-    NAME_COLORS = (data && typeof data === "object") ? data : {};
-  } catch (e) {
-    console.warn("Неможливо завантажити кольори:", e);
-    NAME_COLORS = {};
-  }
-}
-  // ===== COLORS =====
-  function hexToRgba_(hex, a){
-  const h = String(hex).replace("#","").trim();
-  if (h.length !== 6) return hex;
-  const r = parseInt(h.slice(0,2),16);
-  const g = parseInt(h.slice(2,4),16);
-  const b = parseInt(h.slice(4,6),16);
-  return `rgba(${r},${g},${b},${a})`;
-}
-  function hashString(str) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) | 0;
-    return Math.abs(hash);
+  // GET (без JSONP)
+  async function apiGet(url) {
+    const u = url + (url.includes("?") ? "&" : "?") + `_=${Date.now()}`;
+    const res = await fetch(u, { method: "GET", cache: "no-store" });
+    const txt = await res.text();
+    return JSON.parse(txt);
   }
 
-  function getColorForName(name) {
-    if (!name) return null;
-
-    const key = String(name).trim();
-    const saved = NAME_COLORS[key];
-
-    // если задан вручную — используем
-    if (saved) {
-  return { 
-    bg: hexToRgba_(saved, 0.82),   // мягче
-    border: saved                  // границу оставляем чёткой
-  };
-}
-
-    // fallback
-    const hue = hashString(key) % 360;
-    return {
-  bg: `hsla(${hue}, 70%, 82%, 0.82)`,
-  border: `hsl(${hue}, 55%, 45%)`
-};
-  }
-
-  function getPillStyleForName(name) {
-    const c = getColorForName(name);
-    if (!c) return "";
-    return `background-color:${c.bg};color:#111827;--pill-border:${c.border};`;
-  }
-
-  // ===== POST no-cors =====
+  // POST (no-cors)
   function postNoCors(payload) {
     return fetch(SCHEDULE_API_URL, {
       method: "POST",
@@ -305,160 +229,190 @@ async function loadNameColors() {
     });
   }
 
-  async function saveNameColor(name, color) {
-    const n = String(name || "").trim();
-    const c = String(color || "").trim();
-    if (!n || !c) return;
-
-    try {
-      await postNoCors({ action: "set_color", name: n, color: c });
-    } catch (e) {
-      console.warn("Не вдалося зберегти колір:", e);
-    }
-
-    NAME_COLORS[n] = c;
-  }
-
-  function getCurrentCellNameFromState(row, role, slot) {
-    const obj = allRows.find(r => r.row === row);
-    if (!obj) return "";
-    const arr = obj[role] || [];
-    return String(arr?.[slot] || "").trim();
-  }
-
-  // ===== pills HTML =====
-  function pillsHtml(rowObj, list, role) {
-    return list.map((name, slot) => {
-      const hasName = name && String(name).trim() !== "";
-      const text = hasName ? String(name).trim() : "";
-      const extraClass = hasName ? "" : " schedule-pill-empty";
-      const styleAttr = hasName ? ` style="${getPillStyleForName(text)}"` : "";
-
-      const prev =
-        rowObj.__prev &&
-        rowObj.__prev[role] &&
-        rowObj.__prev[role][slot] === text;
-
-      const isStart = hasName && !prev;
-
-      return `
-        <span class="schedule-pill${extraClass}"
-          data-row="${rowObj.row}"
-          data-role="${role}"
-          data-slot="${slot}"
-          ${isStart ? 'data-start="1"' : ""}
-          ${styleAttr}>
-          ${isStart ? text : ""}
-        </span>
-      `;
-    }).join("");
-  }
-// ===== Dynamic label fitting (shrink font, then truncate) =====
-const _fitCanvas = document.createElement("canvas");
-const _fitCtx = _fitCanvas.getContext("2d");
-
-function _getFontForMeasure(el, fontSizePx){
-  const cs = window.getComputedStyle(el);
-  const weight = cs.fontWeight || "700";
-  const family = cs.fontFamily || "system-ui";
-  return `${weight} ${fontSizePx}px ${family}`;
-}
-
-function _measureTextPx(el, text, fontSizePx){
-  _fitCtx.font = _getFontForMeasure(el, fontSizePx);
-  return _fitCtx.measureText(text).width;
-}
-
-function fitLabelIntoEl(el, fullText, opts = {}){
-  const {
-    maxFont = 13,
-    minFont = 4,
-    minChars = 4,     // минимум букв, чтобы не было "пусто"
-    padding = 4      // запас внутри плашки
-  } = opts;
-
-  const text = String(fullText || "").trim();
-  if (!text) { el.textContent = ""; return; }
-
-  // ширина доступная
-  const w = Math.max(0, (el.clientWidth || 0) - padding);
-  if (w <= 0) { el.textContent = text; return; }
-
-  // 1) пробуем подобрать размер шрифта (binary search)
-  let lo = minFont, hi = maxFont, best = minFont;
-  while (lo <= hi) {
-    const mid = Math.floor((lo + hi) / 2);
-    const mw = _measureTextPx(el, text, mid);
-    if (mw <= w) { best = mid; lo = mid + 1; }
-    else { hi = mid - 1; }
-  }
-
-  el.style.fontSize = best + "px";
-  el.textContent = text;
-
-  // 2) если даже на minFont не помещается — режем буквы под ширину
-  if (_measureTextPx(el, text, best) > w) {
-    let s = text;
-    // сначала одно слово (если несколько)
-    const first = text.split(/\s+/)[0];
-    s = first;
-
-    // режем до влезания, но не меньше minChars
-    while (s.length > minChars && _measureTextPx(el, s, best) > w) {
-      s = s.slice(0, -1);
-    }
-
-    // если всё равно не влезает — оставляем minChars
-    if (_measureTextPx(el, s, best) > w) {
-      s = first.slice(0, minChars);
-    }
-
-    el.textContent = s;
-  }
-}
-
-function applyDynamicLabels(root){
-  const labels = root.querySelectorAll(".day-cell__label, .week-role-cell__label");
-  labels.forEach(el => {
-    const full = el.getAttribute("data-full") || el.getAttribute("title") || el.textContent || "";
-    fitLabelIntoEl(el, full, { maxFont: 13, minFont: 4, minChars: 4, padding: 6 });
-  });
-}
-  // ===== фиксированные часы 09..22 =====
+  // fixed times 09..22
   function getFixedTimes_() {
     const times = [];
     for (let h = 9; h <= 22; h++) times.push(`${pad2(h)}:00`);
     return times;
   }
 
-  // ============ load & render ============
-  async function loadScheduleForMonth(year, month) {
-    const monthStr = `${year}-${pad2(month)}`;
-    setLoading(true, `Завантажую розклад за ${monthStr}…`);
-    weekLabelEl.textContent = `Месяц ${monthStr}`;
-    subLabelEl.textContent = " ";
+  function timePretty_(t) {
+    const s = String(t || "");
+    const m = s.match(/^(\d{1,2}):(\d{2})/);
+    if (!m) return s;
+    return `${parseInt(m[1], 10)}:${m[2]}`;
+  }
+
+  function shortName_(name) {
+    const n = String(name || "").trim();
+    if (!n) return "";
+    const first = n.split(/\s+/)[0];
+    if (first.length >= 6) return first.slice(0, 4);
+    return first;
+  }
+
+  // ==============================
+  // COLORS
+  // ==============================
+  function hexToRgba_(hex, a) {
+    const h = String(hex).replace("#", "").trim();
+    if (h.length !== 6) return hex;
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  function hashString(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) | 0;
+    return Math.abs(hash);
+  }
+
+  function getColorForName(name) {
+    if (!name) return null;
+    const key = String(name).trim();
+    const saved = NAME_COLORS[key];
+    if (saved) {
+      return { bg: hexToRgba_(saved, 0.82), border: saved };
+    }
+    const hue = hashString(key) % 360;
+    return { bg: `hsla(${hue}, 70%, 82%, 0.82)`, border: `hsl(${hue}, 55%, 45%)` };
+  }
+
+  function getPillStyleForName(name) {
+    const c = getColorForName(name);
+    if (!c) return "";
+    return `background-color:${c.bg};color:#111827;--pill-border:${c.border};`;
+  }
+
+  async function loadNameColors() {
+    try {
+      const data = await apiGet(`${SCHEDULE_API_URL}?action=get_colors`);
+      NAME_COLORS = (data && typeof data === "object") ? data : {};
+    } catch (e) {
+      console.warn("Неможливо завантажити кольори:", e);
+      NAME_COLORS = {};
+    }
+  }
+
+  async function saveNameColor(name, color) {
+    const n = String(name || "").trim();
+    const c = String(color || "").trim();
+    if (!n) return;
+    if (!/^#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/.test(c)) return;
 
     try {
-      const data = await apiGet(`${SCHEDULE_API_URL}?action=list&month=${monthStr}`);
-      const rows = (data && data.rows) ? data.rows : [];
+      await postNoCors({ action: "set_color", name: n, color: c });
+    } catch (e) {
+      console.warn("Не вдалося зберегти колір:", e);
+    }
+    NAME_COLORS[n] = c;
+  }
 
-      allRows = rows.map((r) => {
+  // ==============================
+  // ROLE OPTIONS: dynamic + persistent
+  // ==============================
+  function loadCustomRoleOptions_() {
+    try {
+      const raw = localStorage.getItem("ROLE_OPTIONS_CUSTOM");
+      const obj = raw ? JSON.parse(raw) : {};
+      return (obj && typeof obj === "object") ? obj : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function saveCustomRoleOptions_(obj) {
+    try { localStorage.setItem("ROLE_OPTIONS_CUSTOM", JSON.stringify(obj)); } catch (e) {}
+  }
+
+  function rebuildRoleOptionsFromRows_() {
+    const roles = ["admin", "kellner", "kueche", "reinigung"];
+    const sets = { admin: new Set(), kellner: new Set(), kueche: new Set(), reinigung: new Set() };
+
+    for (const r of allRows) {
+      for (const role of roles) {
+        for (const name of (r[role] || [])) {
+          const n = String(name || "").trim();
+          if (n) sets[role].add(n);
+        }
+      }
+    }
+
+    const custom = loadCustomRoleOptions_();
+    for (const role of roles) {
+      const arr = Array.isArray(custom[role]) ? custom[role] : [];
+      arr.forEach(n => sets[role].add(String(n || "").trim()));
+    }
+
+    for (const role of roles) {
+      (ROLE_OPTIONS[role] || []).forEach(n => sets[role].add(String(n || "").trim()));
+      ROLE_OPTIONS[role] = Array.from(sets[role]).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    }
+  }
+
+  // ==============================
+  // Multi-month load for current period (fix week跨月)
+  // ==============================
+  function monthKey_(d) {
+    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+  }
+
+  function monthsBetween_(start, end) {
+    const out = [];
+    const cur = new Date(start.getFullYear(), start.getMonth(), 1);
+    const last = new Date(end.getFullYear(), end.getMonth(), 1);
+    while (cur <= last) {
+      out.push(monthKey_(cur));
+      cur.setMonth(cur.getMonth() + 1);
+    }
+    return out;
+  }
+
+  async function loadScheduleForPeriod_() {
+    let start, end;
+
+    if (currentMode === MODE_DAY) {
+      const d = getDayStart(currentDate);
+      start = d; end = d;
+    } else if (currentMode === MODE_WEEK) {
+      const r = getWeekRange(currentDate);
+      start = r.start; end = r.end;
+    } else {
+      const r = getMonthRange(currentDate);
+      start = r.start; end = r.end;
+    }
+
+    const monthList = monthsBetween_(start, end);
+    setLoading(true, `Завантажую: ${monthList.join(", ")}…`);
+
+    try {
+      const merged = [];
+      for (const m of monthList) {
+        const data = await apiGet(`${SCHEDULE_API_URL}?action=list&month=${m}`);
+        const rows = (data && data.rows) ? data.rows : [];
+        merged.push(...rows);
+      }
+
+      allRows = merged.map((r) => {
         const rawDate = String(r.date || "").trim();
-const dObj = parseISODate(rawDate);
-const isoDay = dObj ? toISODate_(dObj) : "";
+        const dObj = parseISODate(rawDate);
+        const isoDay = dObj ? toISODate_(dObj) : "";
 
-return {
-  row: Number(r.row),
-  date: isoDay,      // <-- ВАЖНО: теперь всегда YYYY-MM-DD
-  dateObj: dObj,
-  time: normalizeTime(r.time),
-  admin: normalizeSlots(r.admin, 3),
-  kellner: normalizeSlots(r.kellner, 4),
-  kueche: normalizeSlots(r.kueche, 4),
-  reinigung: normalizeSlots(r.reinigung, 2),
-};
+        return {
+          row: Number(r.row),
+          date: isoDay,
+          dateObj: dObj,
+          time: normalizeTime(r.time),
+          admin: normalizeSlots(r.admin, 3),
+          kellner: normalizeSlots(r.kellner, 4),
+          kueche: normalizeSlots(r.kueche, 4),
+          reinigung: normalizeSlots(r.reinigung, 2),
+        };
       }).filter(r => r.dateObj && r.date);
 
+      rebuildRoleOptionsFromRows_();
       renderForCurrentPeriod();
       computeAllStats();
       setLoading(false);
@@ -466,185 +420,230 @@ return {
       setLoading(false);
       weekLabelEl.textContent = "Помилка завантаження";
       subLabelEl.textContent = String(e && e.message ? e.message : e);
-      scheduleContentEl.innerHTML = `<p style="color:#b91c1c;font-weight:800;">Помилка завантаження: ${subLabelEl.textContent}</p>`;
+      scheduleContentEl.innerHTML = `<p style="color:#b91c1c;font-weight:800;">Помилка: ${subLabelEl.textContent}</p>`;
     }
   }
 
-  function renderTableView() {
-    const rows = currentRows.slice().sort((a, b) => {
-      if (a.dateObj.getTime() !== b.dateObj.getTime()) return a.dateObj - b.dateObj;
-      return (a.time || "").localeCompare(b.time || "");
+  // ==============================
+  // META polling (auto refresh after manual sheet edits)
+  // ==============================
+  async function pollMeta_() {
+    try {
+      const meta = await apiGet(`${SCHEDULE_API_URL}?action=meta`);
+      const v = Number(meta && meta.ver ? meta.ver : 0);
+
+      if (_lastMetaVer === null) _lastMetaVer = v;
+
+      if (v !== _lastMetaVer) {
+        _lastMetaVer = v;
+        await loadScheduleForPeriod_();
+      }
+    } catch (e) {}
+  }
+
+  setInterval(pollMeta_, 25000);
+
+  // ==============================
+  // Mobile scroll anchor (no jump to Monday)
+  // ==============================
+  function captureAnchorFromEl_(el) {
+    const host =
+      el.closest("[data-week-day]") ||
+      el.closest("[data-month-day]") ||
+      el.closest(".week-day-card");
+    if (!host) return null;
+    return host.getAttribute("data-week-day") || host.getAttribute("data-month-day") || null;
+  }
+
+  function restoreAnchorScroll_() {
+    if (!_scrollAnchorISO) return;
+
+    const target =
+      document.querySelector(`[data-week-day="${_scrollAnchorISO}"]`) ||
+      document.querySelector(`[data-month-day="${_scrollAnchorISO}"]`);
+
+    if (target) {
+      const card = target.closest(".week-day-card") || target;
+      card.scrollIntoView({ block: "start", behavior: "instant" });
+    }
+    _scrollAnchorISO = null;
+  }
+
+  // ==============================
+  // Dynamic label fitting
+  // ==============================
+  const _fitCanvas = document.createElement("canvas");
+  const _fitCtx = _fitCanvas.getContext("2d");
+
+  function _getFontForMeasure(el, fontSizePx) {
+    const cs = window.getComputedStyle(el);
+    const weight = cs.fontWeight || "700";
+    const family = cs.fontFamily || "system-ui";
+    return `${weight} ${fontSizePx}px ${family}`;
+  }
+
+  function _measureTextPx(el, text, fontSizePx) {
+    _fitCtx.font = _getFontForMeasure(el, fontSizePx);
+    return _fitCtx.measureText(text).width;
+  }
+
+  function fitLabelIntoEl(el, fullText, opts = {}) {
+    const { maxFont = 13, minFont = 4, minChars = 4, padding = 6 } = opts;
+    const text = String(fullText || "").trim();
+    if (!text) { el.textContent = ""; return; }
+
+    const w = Math.max(0, (el.clientWidth || 0) - padding);
+    if (w <= 0) { el.textContent = text; return; }
+
+    let lo = minFont, hi = maxFont, best = minFont;
+    while (lo <= hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      const mw = _measureTextPx(el, text, mid);
+      if (mw <= w) { best = mid; lo = mid + 1; }
+      else { hi = mid - 1; }
+    }
+
+    el.style.fontSize = best + "px";
+    el.textContent = text;
+
+    if (_measureTextPx(el, text, best) > w) {
+      const first = text.split(/\s+/)[0];
+      let s = first;
+      while (s.length > minChars && _measureTextPx(el, s, best) > w) s = s.slice(0, -1);
+      if (_measureTextPx(el, s, best) > w) s = first.slice(0, minChars);
+      el.textContent = s;
+    }
+  }
+
+  function applyDynamicLabels(root) {
+    const labels = root.querySelectorAll(".day-cell__label, .week-role-cell__label");
+    labels.forEach(el => {
+      const full = el.getAttribute("data-full") || el.getAttribute("title") || el.textContent || "";
+      fitLabelIntoEl(el, full, { maxFont: 13, minFont: 4, minChars: 4, padding: 6 });
     });
+  }
+
+  // ==============================
+  // Rendering helpers (cells)
+  // ==============================
+  function getCurrentCellNameFromState(row, role, slot) {
+    const obj = allRows.find(r => r.row === row);
+    if (!obj) return "";
+    const arr = obj[role] || [];
+    return String(arr?.[slot] || "").trim();
+  }
+
+  function renderDayGridCells(dayRows, targetEl = scheduleContentEl, roleFilter = "all") {
+    const rows = dayRows.slice().sort((a, b) => (a.time || "").localeCompare(b.time || ""));
 
     if (!rows.length) {
-      scheduleContentEl.innerHTML =
-        "<p style='font-size:0.9rem;color:#6b7280;font-weight:700;'>На цей період немає змін.</p>";
+      targetEl.innerHTML = "<p style='font-size:0.9rem;color:#6b7280;font-weight:700;'>На цей день немає змін.</p>";
       return;
     }
 
-    // group by day
-    const groups = [];
-    let currentGroup = null;
-    rows.forEach((r) => {
-      const key = r.dateObj.getTime();
-      if (!currentGroup || currentGroup.key !== key) {
-        if (currentGroup) groups.push(currentGroup);
-        currentGroup = { key, dateObj: r.dateObj, items: [r] };
-      } else currentGroup.items.push(r);
-    });
-    if (currentGroup) groups.push(currentGroup);
+    const ALL_ROLES = [
+      { key: "admin", title: "Admin", cols: 3 },
+      { key: "kellner", title: "Kellner", cols: 4 },
+      { key: "kueche", title: "Küche", cols: 4 },
+      { key: "reinigung", title: "Reinigung", cols: 2 },
+    ];
 
-    let desktopHtml = '<div class="schedule-wrapper"><table class="schedule-table">';
-    desktopHtml += "<thead><tr><th>Zeit</th><th>Admin</th><th>Kellner</th><th>Küche</th><th>Reinigung</th></tr></thead><tbody>";
-
-    groups.forEach((g) => {
-      const weekday = getWeekdayName(g.dateObj);
-      const dateStr = formatDate(g.dateObj);
-
-      desktopHtml += `<tr class="day-divider"><td colspan="5">${weekday} ${dateStr}</td></tr>`;
-
-      g.items.forEach((r, idx) => {
-        r.__prev = idx > 0 ? g.items[idx - 1] : null;
-        desktopHtml += "<tr>";
-        desktopHtml += `<td class="time-cell">${r.time || ""}</td>`;
-        desktopHtml += `<td>${pillsHtml(r, r.admin, "admin")}</td>`;
-        desktopHtml += `<td>${pillsHtml(r, r.kellner, "kellner")}</td>`;
-        desktopHtml += `<td>${pillsHtml(r, r.kueche, "kueche")}</td>`;
-        desktopHtml += `<td>${pillsHtml(r, r.reinigung, "reinigung")}</td>`;
-        desktopHtml += "</tr>";
-      });
-    });
-
-    desktopHtml += "</tbody></table></div>";
-    scheduleContentEl.innerHTML = `<div class="schedule-desktop">${desktopHtml}</div>`;
-  }
-
- function renderDayGridCells(dayRows, targetEl = scheduleContentEl, roleFilter = "all") {
-  const rows = dayRows.slice().sort((a, b) => (a.time || "").localeCompare(b.time || ""));
-
-  if (!rows.length) {
-    targetEl.innerHTML =
-      "<p style='font-size:0.9rem;color:#6b7280;font-weight:700;'>На цей день немає змін.</p>";
-    return;
-  }
-
-  const ALL_ROLES = [
-    { key: "admin", title: "Admin", cols: 3 },
-    { key: "kellner", title: "Kellner", cols: 4 },
-    { key: "kueche", title: "Küche", cols: 4 },
-    { key: "reinigung", title: "Reinigung", cols: 2 },
-  ];
-
-  const roles =
-    roleFilter && roleFilter !== "all"
+    const roles = (roleFilter && roleFilter !== "all")
       ? ALL_ROLES.filter(r => r.key === roleFilter)
       : ALL_ROLES;
 
-  const withSeps = roles.length > 1;
+    const withSeps = roles.length > 1;
 
-  let gridCols = `70px `;
-  roles.forEach((r, idx) => {
-    gridCols += `repeat(${r.cols}, minmax(46px, 1fr)) `;
-    if (withSeps && idx !== roles.length - 1) gridCols += `10px `;
-  });
-
-  let html = `<div class="day-compact">
-    <div class="day-grid" style="grid-template-columns:${gridCols.trim()};">
-  `;
-
-  // header
-  html += `<div class="day-head day-head--time">Zeit</div>`;
-  roles.forEach((r, idx) => {
-    html += `<div class="day-head day-head--role" style="grid-column: span ${r.cols};">${r.title}</div>`;
-    if (withSeps && idx !== roles.length - 1) html += `<div class="day-head day-sep day-sep--head"></div>`;
-  });
-
-  // body
-  rows.forEach((r, i) => {
-    const gridRow = i + 2;
-    const isShiftStartLine = (r.time || "").trim() === "16:00";
-    const shiftCls = isShiftStartLine ? " day-row--shiftstart" : "";
-
-    // time
-    html += `<div class="day-time${shiftCls}" style="grid-row:${gridRow};grid-column:1;">${r.time || ""}</div>`;
-
-    let col = 2;
-
-    roles.forEach((role, ridx) => {
-      for (let slot = 0; slot < role.cols; slot++) {
-        const name = (r[role.key]?.[slot] || "").trim();
-        const prev = i > 0 ? (rows[i - 1][role.key]?.[slot] || "").trim() : "";
-        const next = i < rows.length - 1 ? (rows[i + 1][role.key]?.[slot] || "").trim() : "";
-
-        const isStart = !!name && name !== prev;
-        let isEnd = !!name && name !== next; // ✅ let
-
-        // середина блока — не рисуем
-        if (name && !isStart) {
-          col++;
-          continue;
-        }
-
-        const styleStr = name ? getPillStyleForName(name) : "";
-        const label = isStart ? name : "";
-
-        let blockSpan = 1;
-        let timeText = "";
-        let addOverlay = false;
-        let hideOverlay = false;
-
-        if (name && isStart) {
-          let e = i;
-          while (e < rows.length - 1 && String(rows[e + 1][role.key]?.[slot] || "").trim() === name) e++;
-          blockSpan = e - i + 1;
-
-          // ✅ если блок реально тянется вниз, этот элемент должен иметь и end
-          if (blockSpan > 1) isEnd = true;
-
-          if (blockSpan > 1) {
-            timeText = `${timePretty_(rows[i].time)}–${timePretty_(rows[e].time)}`;
-            addOverlay = true;
-            hideOverlay = blockSpan <= 2;
-          }
-        }
-
-        // ✅ если блок span>1 — сохраняем список rowId на каждый час,
-        // чтобы клик внутри большого блока мог открыть ПРАВИЛЬНЫЙ час.
-        const rowsListAttr = (name && isStart && blockSpan > 1)
-          ? ` data-rows="${rows.slice(i, i + blockSpan).map(x => x.row).join(',')}"`
-          : "";
-
-        html += `
-          <div class="day-cell${shiftCls} ${name ? "day-cell--filled" : "day-cell--empty"} ${isStart ? "day-cell--start" : ""} ${isEnd ? "day-cell--end" : ""}"
-               style="grid-row:${gridRow}${name && isStart ? ` / span ${blockSpan}` : ""};grid-column:${col};${styleStr}"
-               data-row="${r.row}"
-               ${rowsListAttr}
-               data-role="${role.key}"
-               data-slot="${slot}">
-            <span class="day-cell__label" title="${name}" data-full="${name}">${label}</span>
-            ${addOverlay ? `
-              <span class="block-time-overlay" data-len="${blockSpan}" ${hideOverlay ? 'data-hide="1"' : ""}>
-                <span class="block-time-vert">${timeText}</span>
-              </span>
-            ` : ""}
-          </div>
-        `;
-
-        col++;
-      }
-
-      if (withSeps && ridx !== roles.length - 1) {
-        html += `<div class="day-sep${shiftCls}" style="grid-row:${gridRow};grid-column:${col};"></div>`;
-        col++;
-      }
+    let gridCols = `70px `;
+    roles.forEach((r, idx) => {
+      gridCols += `repeat(${r.cols}, minmax(46px, 1fr)) `;
+      if (withSeps && idx !== roles.length - 1) gridCols += `10px `;
     });
-  });
 
-  html += `</div></div>`;
-  targetEl.innerHTML = html;
+    let html = `<div class="day-compact"><div class="day-grid" style="grid-template-columns:${gridCols.trim()};">`;
 
-  applyDynamicLabels(targetEl);
-}
+    // header
+    html += `<div class="day-head day-head--time">Zeit</div>`;
+    roles.forEach((r, idx) => {
+      html += `<div class="day-head day-head--role" style="grid-column: span ${r.cols};">${r.title}</div>`;
+      if (withSeps && idx !== roles.length - 1) html += `<div class="day-head day-sep day-sep--head"></div>`;
+    });
+
+    rows.forEach((r, i) => {
+      const gridRow = i + 2;
+      const isShiftStartLine = (r.time || "").trim() === "16:00";
+      const shiftCls = isShiftStartLine ? " day-row--shiftstart" : "";
+
+      html += `<div class="day-time${shiftCls}" style="grid-row:${gridRow};grid-column:1;">${r.time || ""}</div>`;
+
+      let col = 2;
+
+      roles.forEach((role, ridx) => {
+        for (let slot = 0; slot < role.cols; slot++) {
+          const name = (r[role.key]?.[slot] || "").trim();
+          const prev = i > 0 ? (rows[i - 1][role.key]?.[slot] || "").trim() : "";
+          const next = i < rows.length - 1 ? (rows[i + 1][role.key]?.[slot] || "").trim() : "";
+
+          const isStart = !!name && name !== prev;
+          let isEnd = !!name && name !== next;
+
+          if (name && !isStart) { col++; continue; }
+
+          const styleStr = name ? getPillStyleForName(name) : "";
+          const label = isStart ? name : "";
+
+          let blockSpan = 1;
+          let timeText = "";
+          let addOverlay = false;
+          let hideOverlay = false;
+
+          if (name && isStart) {
+            let e = i;
+            while (e < rows.length - 1 && String(rows[e + 1][role.key]?.[slot] || "").trim() === name) e++;
+            blockSpan = e - i + 1;
+
+            if (blockSpan > 1) isEnd = true;
+
+            if (blockSpan > 1) {
+              timeText = `${timePretty_(rows[i].time)}–${timePretty_(rows[e].time)}`;
+              addOverlay = true;
+              hideOverlay = blockSpan <= 2;
+            }
+          }
+
+          const rowsListAttr = (name && isStart && blockSpan > 1)
+            ? ` data-rows="${rows.slice(i, i + blockSpan).map(x => x.row).join(',')}"`
+            : "";
+
+          html += `
+            <div class="day-cell${shiftCls} ${name ? "day-cell--filled" : "day-cell--empty"} ${isStart ? "day-cell--start" : ""} ${isEnd ? "day-cell--end" : ""}"
+                 style="grid-row:${gridRow}${name && isStart ? ` / span ${blockSpan}` : ""};grid-column:${col};${styleStr}"
+                 data-row="${r.row}"
+                 ${rowsListAttr}
+                 data-role="${role.key}"
+                 data-slot="${slot}">
+              <span class="day-cell__label" title="${name}" data-full="${name}">${label}</span>
+              ${addOverlay ? `
+                <span class="block-time-overlay" data-len="${blockSpan}" ${hideOverlay ? 'data-hide="1"' : ""}>
+                  <span class="block-time-vert">${timeText}</span>
+                </span>
+              ` : ""}
+            </div>
+          `;
+          col++;
+        }
+
+        if (withSeps && ridx !== roles.length - 1) {
+          html += `<div class="day-sep${shiftCls}" style="grid-row:${gridRow};grid-column:${col};"></div>`;
+          col++;
+        }
+      });
+    });
+
+    html += `</div></div>`;
+    targetEl.innerHTML = html;
+    applyDynamicLabels(targetEl);
+  }
 
   function renderWeekBlocks(roleFilter = "all") {
     const byDate = new Map();
@@ -660,11 +659,9 @@ return {
     }
 
     let html = `<div class="week-blocks">`;
-
     dates.forEach(dateStr => {
       const d = new Date(dateStr);
       const title = `${getWeekdayName(d)} ${formatDate(d)}`;
-
       html += `
         <div class="week-day-card">
           <div class="week-day-title">${title}</div>
@@ -672,8 +669,8 @@ return {
         </div>
       `;
     });
-
     html += `</div>`;
+
     scheduleContentEl.innerHTML = html;
 
     dates.forEach(dateStr => {
@@ -683,10 +680,7 @@ return {
     });
   }
 
-  
-  // ===== MONTH: list of days (как сейчас, но весь месяц) =====
-  function renderMonthDayList(roleFilter = "all"){
-    // группируем по дню
+  function renderMonthDayList(roleFilter = "all") {
     const byDate = new Map();
     currentRows.forEach(r => {
       if (!r.date) return;
@@ -694,17 +688,16 @@ return {
       byDate.get(r.date).push(r);
     });
 
-    // берём все дни месяца (включая пустые)
     const range = getMonthRange(currentDate);
     const days = [];
-    for (let d = new Date(range.start); d <= range.end; d.setDate(d.getDate()+1)){
+    for (let d = new Date(range.start); d <= range.end; d.setDate(d.getDate() + 1)) {
       const day = new Date(d);
-      day.setHours(0,0,0,0);
+      day.setHours(0, 0, 0, 0);
       days.push(day);
     }
 
     let html = `<div class="week-blocks month-blocks">`;
-    days.forEach(day=>{
+    days.forEach(day => {
       const iso = toISODate_(day);
       const title = `${getWeekdayName(day)} ${formatDate(day)}`;
       html += `
@@ -717,7 +710,7 @@ return {
     html += `</div>`;
     scheduleContentEl.innerHTML = html;
 
-    days.forEach(day=>{
+    days.forEach(day => {
       const iso = toISODate_(day);
       const host = scheduleContentEl.querySelector(`[data-month-day="${iso}"]`);
       if (!host) return;
@@ -726,30 +719,18 @@ return {
     });
   }
 
-  // ===== MONTH: календарь по неделям (для выбранной роли) =====
-  function renderMonthRoleCalendar(roleKey){
-    if (!monthRoleViewEl) return;
+  function renderWeekRoleTimeline(roleKey) {
+    if (!weekCompactEl) return;
 
-    const range = getMonthRange(currentDate);
-    const monthStart = new Date(range.start);
-    const monthEnd = new Date(range.end);
+    scheduleContentEl.style.display = "none";
+    weekCompactEl.style.display = "block";
 
-    // строим недели: от понедельника перед 1-м числом до воскресенья после конца
-    const startWeek = getWeekRange(monthStart).start;
-    const endWeek = getWeekRange(monthEnd).end;
-
-    const weeks = [];
-    for (let d = new Date(startWeek); d <= endWeek; d.setDate(d.getDate()+7)){
-      const weekStart = new Date(d);
-      weekStart.setHours(0,0,0,0);
-      const days = [];
-      for (let i=0;i<7;i++){
-        const day = new Date(weekStart);
-        day.setDate(weekStart.getDate()+i);
-        day.setHours(0,0,0,0);
-        days.push(day);
-      }
-      weeks.push(days);
+    const range = getWeekRange(currentDate);
+    const days = [];
+    for (let d = new Date(range.start); d <= range.end; d.setDate(d.getDate() + 1)) {
+      const day = new Date(d);
+      day.setHours(0, 0, 0, 0);
+      days.push(day);
     }
 
     const roleCols =
@@ -766,309 +747,136 @@ return {
 
     const times = getFixedTimes_();
 
-    // map: date|time -> rowObj
     const map = new Map();
-    currentRows.forEach(r=>{
+    currentRows.forEach(r => {
       if (!r.date || !r.time) return;
       map.set(`${r.date}|${r.time}`, r);
     });
 
-    // grid columns: Zeit + 7*roleCols with separators
     let gridCols = `70px `;
     const cellMin = (roleCols === 4) ? 30 : (roleCols === 3) ? 40 : 48;
     const sepW = 8;
-    for (let i=0;i<7;i++){
+
+    days.forEach((_, idx) => {
       gridCols += `repeat(${roleCols}, minmax(${cellMin}px, 1fr)) `;
-      if (i !== 6) gridCols += `${sepW}px `;
-    }
+      if (idx !== days.length - 1) gridCols += `${sepW}px `;
+    });
 
-    let out = `<div class="month-role-title">${roleTitle} — ${formatMonthYear(range.start)}</div>`;
+    let html = `
+      <div class="week-role-wrap">
+        <div class="week-role-title">${roleTitle}</div>
+        <div class="week-role-grid" style="grid-template-columns:${gridCols.trim()};">
+    `;
 
-    weeks.forEach((days, wIndex)=>{
-      out += `<div class="month-week-card">
-        <div class="month-week-head">Тиждень${formatDate(days[0])} — ${formatDate(days[6])}</div>
-        <div class="week-role-wrap">
-          <div class="week-role-grid" style="grid-template-columns:${gridCols.trim()};">
-      `;
+    html += `<div class="week-role-head week-role-head--time">Zeit</div>`;
 
-      // header
-      out += `<div class="week-role-head week-role-head--time">Zeit</div>`;
-      let colCursor = 2;
-      days.forEach((day, idx)=>{
-        const head = day.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
-        out += `<div class="week-role-head week-role-head--day" style="grid-column:${colCursor} / span ${roleCols};">${head}</div>`;
-        colCursor += roleCols;
-        if (idx !== 6){
-          out += `<div class="week-role-sep week-role-sep--head" style="grid-column:${colCursor};"></div>`;
-          colCursor += 1;
-        }
-      });
+    let colCursor = 2;
+    days.forEach((day, idx) => {
+      const head = day.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
+      html += `<div class="week-role-head week-role-head--day" style="grid-column:${colCursor} / span ${roleCols};">${head}</div>`;
+      colCursor += roleCols;
+      if (idx !== days.length - 1) {
+        html += `<div class="week-role-sep week-role-sep--head" style="grid-column:${colCursor};"></div>`;
+        colCursor += 1;
+      }
+    });
 
-      // body
-      times.forEach((time, tIndex)=>{
-        const gridRow = tIndex + 2;
-        out += `<div class="week-role-time" style="grid-row:${gridRow};grid-column:1;">${time}</div>`;
-        let col = 2;
+    times.forEach((time, tIndex) => {
+      const gridRow = tIndex + 2;
+      html += `<div class="week-role-time" style="grid-row:${gridRow};grid-column:1;">${time}</div>`;
 
-        days.forEach((day, dayIndex)=>{
-          const dateISO = toISODate_(day);
-          const inMonth = day >= monthStart && day <= monthEnd;
+      let col = 2;
 
-          for (let slot=0; slot<roleCols; slot++){
-            const rowObj = (inMonth ? (map.get(`${dateISO}|${time}`) || null) : null);
-            const name = rowObj ? String(rowObj[roleKey]?.[slot] || "").trim() : "";
+      days.forEach((day, dayIndex) => {
+        const dateISO = toISODate_(day);
 
-            const prevTime = times[tIndex - 1] || null;
-            const nextTime = times[tIndex + 1] || null;
-            const prevRow = (inMonth && prevTime) ? (map.get(`${dateISO}|${prevTime}`) || null) : null;
-            const nextRow = (inMonth && nextTime) ? (map.get(`${dateISO}|${nextTime}`) || null) : null;
+        for (let slot = 0; slot < roleCols; slot++) {
+          const rowObj = map.get(`${dateISO}|${time}`) || null;
+          const name = rowObj ? String(rowObj[roleKey]?.[slot] || "").trim() : "";
 
-            const prevName = prevRow ? String(prevRow[roleKey]?.[slot] || "").trim() : "";
-            const nextName = nextRow ? String(nextRow[roleKey]?.[slot] || "").trim() : "";
+          const prevTime = times[tIndex - 1] || null;
+          const nextTime = times[tIndex + 1] || null;
 
-            const isStart = !!name && name !== prevName;
-            let isEnd = !!name && name !== nextName;
+          const prevRow = prevTime ? (map.get(`${dateISO}|${prevTime}`) || null) : null;
+          const nextRow = nextTime ? (map.get(`${dateISO}|${nextTime}`) || null) : null;
 
-            if (name && !isStart){ col++; continue; }
+          const prevName = prevRow ? String(prevRow[roleKey]?.[slot] || "").trim() : "";
+          const nextName = nextRow ? String(nextRow[roleKey]?.[slot] || "").trim() : "";
 
-            const styleStr = name ? getPillStyleForName(name) : "";
-            const label = isStart ? shortName_(name) : "";
+          const isStart = !!name && name !== prevName;
+          let isEnd = !!name && name !== nextName;
 
-            let blockSpan = 1;
-            let timeText = "";
-            let addOverlay = false;
-            let hideOverlay = false;
+          if (name && !isStart) { col++; continue; }
 
-            if (name && isStart){
-              let e = tIndex;
-              while (e < times.length - 1){
-                const nr = map.get(`${dateISO}|${times[e+1]}`) || null;
-                const nn = nr ? String(nr[roleKey]?.[slot] || "").trim() : "";
-                if (nn !== name) break;
-                e++;
-              }
-              blockSpan = e - tIndex + 1;
-              if (blockSpan > 1) isEnd = true;
-              if (blockSpan > 1){
-                timeText = `${timePretty_(times[tIndex])}–${timePretty_(times[e])}`;
-                addOverlay = true;
-                hideOverlay = blockSpan <= 2;
-              }
+          const styleStr = name ? getPillStyleForName(name) : "";
+          const label = isStart ? shortName_(name) : "";
+
+          let blockSpan = 1;
+          let timeText = "";
+          let addOverlay = false;
+          let hideOverlay = false;
+
+          if (name && isStart) {
+            let e = tIndex;
+            while (e < times.length - 1) {
+              const nr = map.get(`${dateISO}|${times[e + 1]}`) || null;
+              const nn = nr ? String(nr[roleKey]?.[slot] || "").trim() : "";
+              if (nn !== name) break;
+              e++;
             }
 
-            const clickable = rowObj ? "week-role-cell--click" : "week-role-cell--nocell";
-            const disabled = inMonth ? "" : " month-cell--out";
-            const rowsListAttr = (name && isStart && blockSpan > 1)
-              ? ` data-rows="${times.slice(tIndex, tIndex + blockSpan)
-                  .map(t => (map.get(`${dateISO}|${t}`) || {}).row)
-                  .filter(Boolean)
-                  .join(',')}"`
-              : "";
+            blockSpan = e - tIndex + 1;
+            if (blockSpan > 1) isEnd = true;
 
-            out += `
-              <div class="week-role-cell ${clickable}${disabled} ${name ? "week-role-cell--filled" : "week-role-cell--empty"} ${isStart ? "week-role-cell--start" : ""} ${isEnd ? "week-role-cell--end" : ""}"
-                   style="grid-row:${gridRow}${name && isStart ? ` / span ${blockSpan}` : ""};grid-column:${col};${styleStr}"
-                   ${rowObj ? `data-row="${rowObj.row}"` : ""}
-                   ${rowsListAttr}
-                   data-role="${roleKey}"
-                   data-slot="${slot}">
-                <span class="week-role-cell__label" title="${name}" data-full="${name}">${label}</span>
-                ${addOverlay ? `
-                  <span class="block-time-overlay" data-len="${blockSpan}" ${hideOverlay ? 'data-hide="1"' : ""}>
-                    <span class="block-time-vert">${timeText}</span>
-                  </span>
-                ` : ""}
-              </div>
-            `;
-            col++;
+            if (blockSpan > 1) {
+              timeText = `${timePretty_(times[tIndex])}–${timePretty_(times[e])}`;
+              addOverlay = true;
+              hideOverlay = blockSpan <= 2;
+            }
           }
 
-          if (dayIndex !== 6){
-            out += `<div class="week-role-sep" style="grid-row:${gridRow};grid-column:${col};"></div>`;
-            col++;
-          }
-        });
-      });
+          const clickable = rowObj ? "week-role-cell--click" : "week-role-cell--nocell";
 
-      out += `</div></div></div>`;
-    });
+          const rowsListAttr = (name && isStart && blockSpan > 1)
+            ? ` data-rows="${times.slice(tIndex, tIndex + blockSpan)
+                .map(t => (map.get(`${dateISO}|${t}`) || {}).row)
+                .filter(Boolean)
+                .join(',')}"`
+            : "";
 
-    monthRoleViewEl.innerHTML = out;
-    applyDynamicLabels(monthRoleViewEl);
-  }
-
-// ===== NEW: Week Role Timeline (сплошные столбики на неделю для 1 роли) =====
-  function renderWeekRoleTimeline(roleKey) {
-  if (!weekCompactEl) return;
-
-  scheduleContentEl.style.display = "none";
-  weekCompactEl.style.display = "block";
-
-  const range = getWeekRange(currentDate);
-
-  const days = [];
-  for (let d = new Date(range.start); d <= range.end; d.setDate(d.getDate() + 1)) {
-    const day = new Date(d);
-    day.setHours(0, 0, 0, 0);
-    days.push(day);
-  }
-
-  const roleCols =
-    roleKey === "admin" ? 3 :
-    roleKey === "kellner" ? 4 :
-    roleKey === "kueche" ? 4 :
-    2;
-
-  const roleTitle =
-    roleKey === "admin" ? "Адміни" :
-    roleKey === "kellner" ? "Офіціанти" :
-    roleKey === "kueche" ? "Кухня" :
-    "Прибирання";
-
-  const times = getFixedTimes_();
-
-  const map = new Map();
-  currentRows.forEach(r => {
-    if (!r.date || !r.time) return;
-    map.set(`${r.date}|${r.time}`, r);
-  });
-
-  let gridCols = `70px `;
-  const cellMin = (roleCols === 4) ? 30 : (roleCols === 3) ? 40 : 48;
-  const sepW = 8;
-
-  days.forEach((_, idx) => {
-    gridCols += `repeat(${roleCols}, minmax(${cellMin}px, 1fr)) `;
-    if (idx !== days.length - 1) gridCols += `${sepW}px `;
-  });
-
-  let html = `
-    <div class="week-role-wrap">
-      <div class="week-role-title">${roleTitle}</div>
-      <div class="week-role-grid" style="grid-template-columns:${gridCols.trim()};">
-  `;
-
-  // header
-  html += `<div class="week-role-head week-role-head--time">Zeit</div>`;
-
-  let colCursor = 2;
-  days.forEach((day, idx) => {
-    const head = day.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
-    html += `<div class="week-role-head week-role-head--day" style="grid-column:${colCursor} / span ${roleCols};">${head}</div>`;
-    colCursor += roleCols;
-    if (idx !== days.length - 1) {
-      html += `<div class="week-role-sep week-role-sep--head" style="grid-column:${colCursor};"></div>`;
-      colCursor += 1;
-    }
-  });
-
-  // body
-  times.forEach((time, tIndex) => {
-    const gridRow = tIndex + 2;
-
-    html += `<div class="week-role-time" style="grid-row:${gridRow};grid-column:1;">${time}</div>`;
-
-    let col = 2;
-
-    days.forEach((day, dayIndex) => {
-      const dateISO = `${day.getFullYear()}-${pad2(day.getMonth() + 1)}-${pad2(day.getDate())}`;
-
-      for (let slot = 0; slot < roleCols; slot++) {
-        const rowObj = map.get(`${dateISO}|${time}`) || null;
-        const name = rowObj ? String(rowObj[roleKey]?.[slot] || "").trim() : "";
-
-        const prevTime = times[tIndex - 1] || null;
-        const nextTime = times[tIndex + 1] || null;
-
-        const prevRow = prevTime ? (map.get(`${dateISO}|${prevTime}`) || null) : null;
-        const nextRow = nextTime ? (map.get(`${dateISO}|${nextTime}`) || null) : null;
-
-        const prevName = prevRow ? String(prevRow[roleKey]?.[slot] || "").trim() : "";
-        const nextName = nextRow ? String(nextRow[roleKey]?.[slot] || "").trim() : "";
-
-        const isStart = !!name && name !== prevName;
-        let isEnd = !!name && name !== nextName; // ✅ let
-
-        // середина блока — не рисуем
-        if (name && !isStart) {
+          html += `
+            <div class="week-role-cell ${clickable} ${name ? "week-role-cell--filled" : "week-role-cell--empty"} ${isStart ? "week-role-cell--start" : ""} ${isEnd ? "week-role-cell--end" : ""}"
+                 style="grid-row:${gridRow}${name && isStart ? ` / span ${blockSpan}` : ""};grid-column:${col};${styleStr}"
+                 ${rowObj ? `data-row="${rowObj.row}"` : ""}
+                 ${rowsListAttr}
+                 data-role="${roleKey}"
+                 data-slot="${slot}">
+              <span class="week-role-cell__label" title="${name}" data-full="${name}">${label}</span>
+              ${addOverlay ? `
+                <span class="block-time-overlay" data-len="${blockSpan}" ${hideOverlay ? 'data-hide="1"' : ""}>
+                  <span class="block-time-vert">${timeText}</span>
+                </span>
+              ` : ""}
+            </div>
+          `;
           col++;
-          continue;
         }
 
-        const styleStr = name ? getPillStyleForName(name) : "";
-        const label = isStart ? shortName_(name) : "";
-
-        let blockSpan = 1;
-        let timeText = "";
-        let addOverlay = false;
-        let hideOverlay = false;
-
-        if (name && isStart) {
-          let e = tIndex;
-          while (e < times.length - 1) {
-            const nr = map.get(`${dateISO}|${times[e + 1]}`) || null;
-            const nn = nr ? String(nr[roleKey]?.[slot] || "").trim() : "";
-            if (nn !== name) break;
-            e++;
-          }
-
-          blockSpan = e - tIndex + 1;
-
-          // ✅ если блок реально тянется вниз, этот элемент должен иметь и end
-          if (blockSpan > 1) isEnd = true;
-
-          if (blockSpan > 1) {
-            timeText = `${timePretty_(times[tIndex])}–${timePretty_(times[e])}`;
-            addOverlay = true;
-            hideOverlay = blockSpan <= 2;
-          }
+        if (dayIndex !== days.length - 1) {
+          html += `<div class="week-role-sep" style="grid-row:${gridRow};grid-column:${col};"></div>`;
+          col++;
         }
-
-        const clickable = rowObj ? "week-role-cell--click" : "week-role-cell--nocell";
-
-        // ✅ если блок span>1 — сохраняем список rowId на каждый час,
-        // чтобы клик внутри большого блока мог открыть ПРАВИЛЬНЫЙ час.
-        const rowsListAttr = (name && isStart && blockSpan > 1)
-          ? ` data-rows="${times.slice(tIndex, tIndex + blockSpan)
-              .map(t => (map.get(`${dateISO}|${t}`) || {}).row)
-              .filter(Boolean)
-              .join(',')}"`
-          : "";
-
-        html += `
-          <div class="week-role-cell ${clickable} ${name ? "week-role-cell--filled" : "week-role-cell--empty"} ${isStart ? "week-role-cell--start" : ""} ${isEnd ? "week-role-cell--end" : ""}"
-               style="grid-row:${gridRow}${name && isStart ? ` / span ${blockSpan}` : ""};grid-column:${col};${styleStr}"
-               ${rowObj ? `data-row="${rowObj.row}"` : ""}
-               ${rowsListAttr}
-               data-role="${roleKey}"
-               data-slot="${slot}">
-            <span class="week-role-cell__label" title="${name}" data-full="${name}">${label}</span>
-            ${addOverlay ? `
-              <span class="block-time-overlay" data-len="${blockSpan}" ${hideOverlay ? 'data-hide="1"' : ""}>
-                <span class="block-time-vert">${timeText}</span>
-              </span>
-            ` : ""}
-          </div>
-        `;
-
-        col++;
-      }
-
-      if (dayIndex !== days.length - 1) {
-        html += `<div class="week-role-sep" style="grid-row:${gridRow};grid-column:${col};"></div>`;
-        col++;
-      }
+      });
     });
-  });
 
-  html += `</div></div>`;
-  weekCompactEl.innerHTML = html;
+    html += `</div></div>`;
+    weekCompactEl.innerHTML = html;
+    applyDynamicLabels(weekCompactEl);
+  }
 
-  // чтобы подписи (имена) уменьшались по ширине
-  applyDynamicLabels(weekCompactEl);
-}
-
-  // ===== WEEK FILTER helpers =====
+  // ==============================
+  // Filters show/hide
+  // ==============================
   function setWeekFilterVisible_(visible) {
     if (!weekFilterEl || !weekCompactEl) return;
     weekFilterEl.style.display = visible ? "flex" : "none";
@@ -1088,60 +896,25 @@ return {
     return active ? (active.dataset.weekFilter || "all") : "all";
   }
 
-  // ===== MONTH FILTER helpers =====
-  function setMonthFilterVisible_(visible){
-    if (!monthFilterEl || !monthRoleViewEl) return;
+  function setMonthFilterVisible_(visible) {
     monthFilterEl.style.display = visible ? "flex" : "none";
-    if (!visible){
+    if (!visible) {
       monthRoleViewEl.style.display = "none";
       monthRoleViewEl.innerHTML = "";
-      // сброс активной кнопки на "Все"
-      monthFilterEl.querySelectorAll("[data-month-filter]").forEach(btn=>{
+      monthFilterEl.querySelectorAll("[data-month-filter]").forEach(btn => {
         btn.classList.toggle("week-filter__pill--active", btn.dataset.monthFilter === "all");
       });
     }
   }
-  function getActiveMonthFilter_(){
-    if (!monthFilterEl) return "all";
+
+  function getActiveMonthFilter_() {
     const active = monthFilterEl.querySelector(".week-filter__pill--active");
     return active ? (active.dataset.monthFilter || "all") : "all";
   }
 
-  // MONTH FILTER clicks
-  if (monthFilterEl){
-    monthFilterEl.addEventListener("click", (e)=>{
-      const btn = e.target.closest("[data-month-filter]");
-      if (!btn) return;
-      monthFilterEl.querySelectorAll("[data-month-filter]").forEach(b=>b.classList.remove("week-filter__pill--active"));
-      btn.classList.add("week-filter__pill--active");
-      if (currentMode !== MODE_MONTH) return;
-      renderForCurrentPeriod();
-    });
-  }
-
-  if (weekFilterEl) {
-    weekFilterEl.querySelectorAll("[data-week-filter]").forEach(btn => {
-      btn.addEventListener("click", () => {
-        weekFilterEl.querySelectorAll("[data-week-filter]").forEach(b =>
-          b.classList.remove("week-filter__pill--active")
-        );
-        btn.classList.add("week-filter__pill--active");
-
-        const role = btn.dataset.weekFilter;
-
-        // ✅ ВАЖНО: "Все" не трогаем — оставляем текущий недельный вид
-        if (role === "all") {
-          weekCompactEl.style.display = "none";
-          weekCompactEl.innerHTML = "";
-          scheduleContentEl.style.display = "";
-          renderWeekBlocks("all");
-        } else {
-          renderWeekRoleTimeline(role); // новый столбиковый вид
-        }
-      });
-    });
-  }
-
+  // ==============================
+  // Main render
+  // ==============================
   function renderForCurrentPeriod() {
     if (!allRows.length) {
       weekLabelEl.textContent = "Немає даних";
@@ -1185,47 +958,47 @@ return {
     subLabelEl.textContent = `Змін: ${currentRows.length}`;
 
     if (currentMode === MODE_DAY) {
-      // reset week special
       if (weekCompactEl) { weekCompactEl.style.display = "none"; weekCompactEl.innerHTML = ""; }
       scheduleContentEl.style.display = "";
       renderDayGridCells(currentRows, scheduleContentEl, "all");
+      restoreAnchorScroll_();
       return;
     }
 
     if (currentMode === MODE_WEEK) {
       const role = getActiveWeekFilter_();
-
-      // ✅ "Все" = старый вид
       if (role === "all") {
         if (weekCompactEl) { weekCompactEl.style.display = "none"; weekCompactEl.innerHTML = ""; }
         scheduleContentEl.style.display = "";
         renderWeekBlocks("all");
       } else {
-        renderWeekRoleTimeline(role); // новый столбиковый вид
+        renderWeekRoleTimeline(role);
       }
+      restoreAnchorScroll_();
       return;
     }
 
-    // MODE_MONTH
+    // MONTH
     if (weekCompactEl) { weekCompactEl.style.display = "none"; weekCompactEl.innerHTML = ""; }
 
     const mRole = getActiveMonthFilter_();
+    monthRoleViewEl.style.display = "none";
+    monthRoleViewEl.innerHTML = "";
+    scheduleContentEl.style.display = "";
 
+    // В месяце показываем список дней (как было)
     if (mRole === "all") {
-      // список всех дней месяца (каждый день как Day-столбики, все роли)
-      monthRoleViewEl.style.display = "none";
-      monthRoleViewEl.innerHTML = "";
-      scheduleContentEl.style.display = "";
       renderMonthDayList("all");
     } else {
-      // выбранная роль -> календарь по неделям (Пн–Вс) внутри этого месяца
-      scheduleContentEl.style.display = "none";
-      monthRoleViewEl.style.display = "block";
-      renderMonthRoleCalendar(mRole);
+      // упрощение: в этом build мы оставляем список дней (не календарь по неделям),
+      // чтобы ничего не ломать. Если надо — добавим календарь отдельно.
+      renderMonthDayList(mRole);
     }
+
+    restoreAnchorScroll_();
   }
 
-  function setMode(mode) {
+  async function setMode(mode) {
     if (mode === currentMode) return;
     currentMode = mode;
 
@@ -1233,26 +1006,20 @@ return {
     modeWeekBtn.classList.toggle("view-toggle__btn--active", currentMode === MODE_WEEK);
     modeMonthBtn.classList.toggle("view-toggle__btn--active", currentMode === MODE_MONTH);
 
-    if (currentMode === MODE_MONTH) {
-      loadScheduleForMonth(currentDate.getFullYear(), currentDate.getMonth() + 1);
-    } else {
-      renderForCurrentPeriod();
-    }
+    await loadScheduleForPeriod_();
   }
 
-  function changePeriod(delta) {
+  async function changePeriod(delta) {
     if (currentMode === MODE_DAY) currentDate.setDate(currentDate.getDate() + delta);
     else if (currentMode === MODE_WEEK) currentDate.setDate(currentDate.getDate() + delta * 7);
     else currentDate.setMonth(currentDate.getMonth() + delta);
 
-    if (currentMode === MODE_MONTH) {
-      loadScheduleForMonth(currentDate.getFullYear(), currentDate.getMonth() + 1);
-    } else {
-      renderForCurrentPeriod();
-    }
+    await loadScheduleForPeriod_();
   }
 
-  // ============ picker ============
+  // ==============================
+  // Picker UI
+  // ==============================
   function renderColorPaletteUI_(currentName) {
     const wrap = document.createElement("div");
     wrap.style.width = "100%";
@@ -1316,6 +1083,8 @@ return {
   }
 
   function openPicker(targetEl, row, role, slot) {
+    _scrollAnchorISO = captureAnchorFromEl_(targetEl);
+
     const names = ROLE_OPTIONS[role] || [];
     pickerState = { el: targetEl, row, role, slot };
 
@@ -1379,8 +1148,7 @@ return {
     const { row, role, slot } = pickerState;
     const trimmed = (name || "").trim();
 
-    postNoCors({ action: "schedule_update", row, role, slot, value: trimmed })
-      .catch(console.error);
+    postNoCors({ action: "schedule_update", row, role, slot, value: trimmed }).catch(console.error);
 
     const obj = allRows.find(r => r.row === row);
     if (obj && obj[role] && typeof obj[role][slot] !== "undefined") {
@@ -1407,16 +1175,21 @@ return {
     const currentValue = getCurrentCellNameFromState(row, role, slot);
     const newValue = prompt("Введіть ім'я користувача", currentValue || "");
     if (newValue === null) return;
+
+    const n = String(newValue || "").trim();
+    if (n) {
+      const custom = loadCustomRoleOptions_();
+      if (!Array.isArray(custom[role])) custom[role] = [];
+      if (!custom[role].includes(n)) custom[role].push(n);
+      saveCustomRoleOptions_(custom);
+    }
+
     applySelection(newValue);
   });
   pickerCancelBtn.addEventListener("click", closePicker);
   pickerBackdrop.addEventListener("click", (e) => { if (e.target === pickerBackdrop) closePicker(); });
 
-  // ===== CLICK -> correct hour inside spanned block =====
-  // В day/week-grid мы рисуем один большой блок (grid-row: span N)
-  // и сохраняем внутри него список rowId на каждый час: data-rows="1,2,3".
-  // По клику вычисляем, в какой "под-час" попали, чтобы очистка/редактирование
-  // работали именно для выбранного часа, а не всегда для верхнего.
+  // resolve row inside spanned block
   function resolveRowFromSpannedCell_(cellEl, clientY) {
     if (!cellEl) return null;
 
@@ -1432,7 +1205,6 @@ return {
       return r || null;
     }
 
-    // вычисляем индекс часа по Y внутри прямоугольника
     const rect = cellEl.getBoundingClientRect();
     const relY = Math.min(Math.max(0, clientY - rect.top), rect.height - 1);
     const partH = rect.height / ids.length;
@@ -1442,13 +1214,7 @@ return {
     return ids[idx] || ids[0] || null;
   }
 
-  // Клики по таблице (месяц) и дневной сетке + новый week-role
   scheduleContentEl.addEventListener("click", (e) => {
-    const pill = e.target.closest(".schedule-pill");
-    if (pill) {
-      openPicker(pill, Number(pill.dataset.row), pill.dataset.role, Number(pill.dataset.slot));
-      return;
-    }
     const cell = e.target.closest(".day-cell");
     if (cell) {
       const realRow = resolveRowFromSpannedCell_(cell, e.clientY);
@@ -1458,31 +1224,19 @@ return {
     }
   });
 
-  // ✅ клики по week role grid
   if (weekCompactEl) {
     weekCompactEl.addEventListener("click", (e) => {
       const cell = e.target.closest(".week-role-cell");
       if (!cell) return;
-      const realRow = resolveRowFromSpannedCell_(cell, e.clientY);
-      if (!realRow) return; // если в таблице нет строки на этот час
-      openPicker(cell, realRow, cell.dataset.role, Number(cell.dataset.slot));
-    });
-  }
-
-  // ✅ клики по month role calendar (недельные блоки в режиме "Месяц")
-  if (monthRoleViewEl) {
-    monthRoleViewEl.addEventListener("click", (e) => {
-      const cell = e.target.closest(".week-role-cell");
-      if (!cell) return;
-      // если это день вне месяца — не кликаем
-      if (cell.classList.contains("month-cell--out")) return;
       const realRow = resolveRowFromSpannedCell_(cell, e.clientY);
       if (!realRow) return;
       openPicker(cell, realRow, cell.dataset.role, Number(cell.dataset.slot));
     });
   }
 
-  // ============ stats ============
+  // ==============================
+  // STATS
+  // ==============================
   function computeStatsForRange(start, end) {
     const startMs = start.getTime();
     const endMs = end.getTime();
@@ -1542,11 +1296,9 @@ return {
       prevPrev: formatMonthYear(prevPrevRange.start)
     };
 
-    if (today.getDate() <= 10) {
-      statsState.slotMapping = { current: "previous", previous: "prevPrev" };
-    } else {
-      statsState.slotMapping = { current: "current", previous: "previous" };
-    }
+    statsState.slotMapping = (today.getDate() <= 10)
+      ? { current: "previous", previous: "prevPrev" }
+      : { current: "current", previous: "previous" };
 
     statsState.activeSlot = "current";
     renderStatsView();
@@ -1561,7 +1313,6 @@ return {
 
     const key = (statsState.slotMapping || {})[statsState.activeSlot] || "current";
     const monthData = statsState.data[key];
-
     if (!monthData) {
       statsSummaryEl.innerHTML = "<p style='color:#6b7280;font-weight:800;'>Немає даних за цей місяць.</p>";
       statsTableEl.innerHTML = "";
@@ -1630,19 +1381,21 @@ return {
     statsTableEl.innerHTML = html;
   }
 
-  statsMonthCurrentBtn.addEventListener("click", () => {
-    statsState.activeSlot = "current";
-    statsMonthCurrentBtn.classList.add("stats-toggle-btn--active");
-    statsMonthPrevBtn.classList.remove("stats-toggle-btn--active");
-    renderStatsView();
-  });
+  if (statsMonthCurrentBtn && statsMonthPrevBtn) {
+    statsMonthCurrentBtn.addEventListener("click", () => {
+      statsState.activeSlot = "current";
+      statsMonthCurrentBtn.classList.add("stats-toggle-btn--active");
+      statsMonthPrevBtn.classList.remove("stats-toggle-btn--active");
+      renderStatsView();
+    });
 
-  statsMonthPrevBtn.addEventListener("click", () => {
-    statsState.activeSlot = "previous";
-    statsMonthPrevBtn.classList.add("stats-toggle-btn--active");
-    statsMonthCurrentBtn.classList.remove("stats-toggle-btn--active");
-    renderStatsView();
-  });
+    statsMonthPrevBtn.addEventListener("click", () => {
+      statsState.activeSlot = "previous";
+      statsMonthPrevBtn.classList.add("stats-toggle-btn--active");
+      statsMonthCurrentBtn.classList.remove("stats-toggle-btn--active");
+      renderStatsView();
+    });
+  }
 
   statsRoleButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -1653,37 +1406,71 @@ return {
     });
   });
 
-  // ============ navigation ============
-  prevBtn.addEventListener("click", () => changePeriod(-1));
-  nextBtn.addEventListener("click", () => changePeriod(1));
-  todayBtn.addEventListener("click", () => {
+  // ==============================
+  // NAVIGATION + FILTER EVENTS
+  // ==============================
+  if (prevBtn) prevBtn.addEventListener("click", () => changePeriod(-1));
+  if (nextBtn) nextBtn.addEventListener("click", () => changePeriod(1));
+
+  if (todayBtn) todayBtn.addEventListener("click", async () => {
     currentDate = new Date();
-    if (currentMode === MODE_MONTH) {
-      loadScheduleForMonth(currentDate.getFullYear(), currentDate.getMonth() + 1);
-    } else {
-      renderForCurrentPeriod();
-    }
+    await loadScheduleForPeriod_();
   });
 
-  modeDayBtn.addEventListener("click", () => setMode(MODE_DAY));
-  modeWeekBtn.addEventListener("click", () => setMode(MODE_WEEK));
-  modeMonthBtn.addEventListener("click", () => setMode(MODE_MONTH));
+  if (modeDayBtn) modeDayBtn.addEventListener("click", () => setMode(MODE_DAY));
+  if (modeWeekBtn) modeWeekBtn.addEventListener("click", () => setMode(MODE_WEEK));
+  if (modeMonthBtn) modeMonthBtn.addEventListener("click", () => setMode(MODE_MONTH));
 
-  // stats show/hide
-  openStatsBtn.addEventListener("click", () => {
-    sectionSchedule.style.display = "none";
-    sectionStats.style.display = "block";
-    renderStatsView();
-  });
-  closeStatsBtn.addEventListener("click", () => {
-    sectionStats.style.display = "none";
-    sectionSchedule.style.display = "block";
+  if (openStatsBtn && closeStatsBtn && sectionSchedule && sectionStats) {
+    openStatsBtn.addEventListener("click", () => {
+      sectionSchedule.style.display = "none";
+      sectionStats.style.display = "block";
+      renderStatsView();
+    });
+
+    closeStatsBtn.addEventListener("click", () => {
+      sectionStats.style.display = "none";
+      sectionSchedule.style.display = "block";
+    });
+  }
+
+  // week filter clicks
+  if (weekFilterEl) {
+    weekFilterEl.querySelectorAll("[data-week-filter]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        weekFilterEl.querySelectorAll("[data-week-filter]").forEach(b =>
+          b.classList.remove("week-filter__pill--active")
+        );
+        btn.classList.add("week-filter__pill--active");
+
+        const role = btn.dataset.weekFilter;
+        if (currentMode !== MODE_WEEK) return;
+
+        if (role === "all") {
+          if (weekCompactEl) { weekCompactEl.style.display = "none"; weekCompactEl.innerHTML = ""; }
+          scheduleContentEl.style.display = "";
+          renderWeekBlocks("all");
+        } else {
+          renderWeekRoleTimeline(role);
+        }
+      });
+    });
+  }
+
+  // month filter clicks
+  monthFilterEl.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-month-filter]");
+    if (!btn) return;
+    monthFilterEl.querySelectorAll("[data-month-filter]").forEach(b => b.classList.remove("week-filter__pill--active"));
+    btn.classList.add("week-filter__pill--active");
+    if (currentMode !== MODE_MONTH) return;
+    renderForCurrentPeriod();
   });
 
-  // init
-  // month filter UI mount
-  try{
-    // кнопки: Все / Админы / Официанты / Кухня / Уборка
+  // ==============================
+  // Mount month filter UI (без правок HTML)
+  // ==============================
+  try {
     monthFilterEl.innerHTML = `
       <button class="week-filter__pill week-filter__pill--active" data-month-filter="all">Усі</button>
       <button class="week-filter__pill" data-month-filter="admin">Админы</button>
@@ -1691,24 +1478,25 @@ return {
       <button class="week-filter__pill" data-month-filter="kueche">Кухня</button>
       <button class="week-filter__pill" data-month-filter="reinigung">Уборка</button>
     `;
-    // === FIX: корректно вставляем фильтр и month-role-view ===
 
-// 1. ФИЛЬТР ролей — СРАЗУ ПОД week-filter (как в режиме "Неделя")
-if (weekFilterEl) {
-  weekFilterEl.insertAdjacentElement("afterend", monthFilterEl);
-} else if (sectionSchedule && scheduleContentEl) {
-  sectionSchedule.insertBefore(monthFilterEl, scheduleContentEl);
-}
+    if (weekFilterEl) {
+      weekFilterEl.insertAdjacentElement("afterend", monthFilterEl);
+    } else if (sectionSchedule && scheduleContentEl) {
+      sectionSchedule.insertBefore(monthFilterEl, scheduleContentEl);
+    }
 
-// 2. Контейнер для "Месяц → по неделям → роль"
-//    ставим ПЕРЕД основным расписанием
-if (scheduleContentEl) {
-  scheduleContentEl.insertAdjacentElement("beforebegin", monthRoleViewEl);
-} else if (sectionSchedule) {
-  sectionSchedule.appendChild(monthRoleViewEl);
-}
-  }catch(e){ console.warn("month filter mount failed", e); }
+    if (scheduleContentEl) {
+      scheduleContentEl.insertAdjacentElement("beforebegin", monthRoleViewEl);
+    } else if (sectionSchedule) {
+      sectionSchedule.appendChild(monthRoleViewEl);
+    }
+  } catch (e) {
+    console.warn("month filter mount failed", e);
+  }
 
+  // ==============================
+  // INIT
+  // ==============================
   setLoading(true, "Завантажую розклад…");
 
   try {
@@ -1717,80 +1505,5 @@ if (scheduleContentEl) {
     console.warn("loadNameColors failed:", e);
   }
 
-  loadScheduleForMonth(currentDate.getFullYear(), currentDate.getMonth() + 1);
+  await loadScheduleForPeriod_();
 });
-/* ================================
-   ГЛАВНАЯ ПАНЕЛЬ: ДЕЖУРНЫЙ СЕГОДНЯ
-================================ */
-
-function renderTodayDutyAdmins() {
-  const nameEl = document.getElementById("duty-admin-name");
-  const timeEl = document.getElementById("duty-admin-time");
-  if (!nameEl || !timeEl) return;
-
-  const todayISO = toISODate_(new Date());
-
-  // берём только сегодня + только админы
-  const rows = allRows
-    .filter(r => r.date === todayISO)
-    .sort((a, b) => (a.time || "").localeCompare(b.time || ""));
-
-  if (!rows.length) {
-    nameEl.textContent = "Немає чергового";
-    timeEl.textContent = "—";
-    return;
-  }
-
-  // name -> [times]
-  const map = {};
-
-  rows.forEach(r => {
-    r.admin.forEach(name => {
-      const n = (name || "").trim();
-      if (!n) return;
-      if (!map[n]) map[n] = [];
-      map[n].push(r.time);
-    });
-  });
-
-  if (!Object.keys(map).length) {
-    nameEl.textContent = "Немає чергового";
-    timeEl.textContent = "—";
-    return;
-  }
-
-  const lines = [];
-
-  Object.entries(map).forEach(([name, times]) => {
-    const intervals = [];
-
-    let start = times[0];
-    let prev = times[0];
-
-    for (let i = 1; i < times.length; i++) {
-      const cur = times[i];
-      if (parseInt(cur) === parseInt(prev) + 1) {
-        prev = cur;
-      } else {
-        intervals.push(`${start}–${prev}`);
-        start = cur;
-        prev = cur;
-      }
-    }
-    intervals.push(`${start}–${prev}`);
-
-    lines.push({
-      name,
-      text: intervals.join(", ")
-    });
-  });
-
-  // если один — красиво, если несколько — списком
-  if (lines.length === 1) {
-    nameEl.textContent = lines[0].name;
-    timeEl.textContent = lines[0].text;
-  } else {
-    nameEl.innerHTML = lines.map(l => `<strong>${l.name}</strong>`).join("<br>");
-    timeEl.innerHTML = lines.map(l => l.text).join("<br>");
-  }
-}
