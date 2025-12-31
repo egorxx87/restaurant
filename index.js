@@ -15,7 +15,7 @@ const TASKS_API_URL =
 // календарь берём из того же скрипта, где ты добавил action "gcal_events"
 const CALENDAR_API_URL =
   "https://script.google.com/macros/s/AKfycbyQ4r7ZG3xdkyD30f0je-gFW2GZiQ4R7XApdN1R-tEc2WYy0md5TAz0-rTJd7M67P44Kw/exec";
-  const MINI_CALENDAR_API_URL =
+  const HOME_HOLIDAY_API_URL =
   "https://script.google.com/macros/s/AKfycbw-yTbvyKAw8cO6j2dkopRYbGx5aHCB7nAxcG8M5yXAKGGLL8plNe9hUkiPO86LmZTD2A/exec";
 
 const ADMIN_COLS = 3;
@@ -668,7 +668,7 @@ function addDays_(d, n){
 async function fetchHolidaySetForWeek_(){
   try{
     // важно: берём week, чтобы покрыть и сегодня, и завтра, и переход года
-    const res = await fetch(`${MINI_CALENDAR_API_URL}?action=gcal_events&range=week&_=${Date.now()}`, { cache:"no-store" });
+    const res = await fetch(`${HOME_HOLIDAY_API_URL}?action=gcal_events&range=week&_=${Date.now()}`, { cache:"no-store" });
     const data = await res.json();
     const events = Array.isArray(data?.events) ? data.events : [];
 
