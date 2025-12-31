@@ -437,3 +437,48 @@
   border-color: #d1d5db !important;
   color: #9ca3af !important;
 }
+.week-day-title--flex{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.sch-holiday-badge{
+  margin-left:10px;
+  font-size:12px;
+  font-weight:800;
+  padding:3px 10px;
+  border-radius:999px;
+  background:#f3e8d6;
+  color:#7a4a12;
+  border:1px solid rgba(122,74,18,.25);
+  line-height:1;
+}
+/* Home cards ("Сьогодні"/"Завтра") title wrapper */
+.mini-title--flex{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+/* Holiday badge on home schedule cards (Today / Tomorrow) */
+.mini-title{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.home-holiday-badge{
+  display:inline-flex;
+  align-items:center;
+  height:22px;
+  padding:0 10px;
+  border-radius:999px;
+  font-weight:800;
+  font-size:12px;
+  line-height:1;
+  color:#7c2d12;
+  background:#fde7d7;
+  border:1px solid rgba(124,45,18,.18);
+  white-space:nowrap;
+}

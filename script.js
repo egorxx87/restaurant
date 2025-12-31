@@ -1,7 +1,9 @@
 document.addEventListener("DOMContentLoaded", async () => {
   const SCHEDULE_API_URL =
     "https://script.google.com/macros/s/AKfycbxbbznamVwMb39TvLR5LpSE7bGk1uWn6Lw1HUH_WKwMboggPyYUXosMbgs-LUo9mRnSMg/exec";
-
+// HOLIDAYS API (тот же, что на главной)
+const MINI_CALENDAR_API_URL =
+  "https://script.google.com/macros/s/AKfycbw-yTbvyKAw8cO6j2dkopRYbGx5aHCB7nAxcG8M5yXAKGGLL8plNe9hUkiPO86LmZTD2A/exec";
   const MODE_DAY = "day";
   const MODE_WEEK = "week";
   const MODE_MONTH = "month";
@@ -102,6 +104,163 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ==============================
   // HELPERS
   // ==============================
+  // ==============================
+// HOLIDAYS (only "holiday")
+// ==============================
+// ==============================
+// HOLIDAYS (only "holiday")
+// ==============================
+let HOLIDAY_SET = new Set();
+
+// локальная YYYY-MM-DD (важно!)
+function localISODate_(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const dd = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${dd}`;
+}
+
+// нормализуем event.start -> YYYY-MM-DD в ЛОКАЛЬНОЙ дате
+function eventStartISO_(ev){
+  const raw = String(ev?.start || "").trim();
+  if (!raw) return "";
+
+  // если allDay и пришло чистое YYYY-MM-DD — используем напрямую
+  if (ev?.allDay && /^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+  // иначе парсим Date и берём локальную дату
+  const d = new Date(raw);
+  if (isNaN(d)) {
+    // fallback: хотя бы срез
+    return raw.slice(0,10);
+  }
+  return localISODate_(d);
+}
+async function loadHolidaysForRange_(start, end) {
+  HOLIDAY_SET = new Set();
+
+  const startDay = getDayStart(start);
+  const endDay = getDayStart(end);
+
+  // ⚠️ ВАЖНО: to делаем EXCLUSIVE = end + 1 день
+  const endExclusive = new Date(endDay);
+  endExclusive.setDate(endExclusive.getDate() + 1);
+
+  const fromISO = toISODate_(startDay);
+  const toISO = toISODate_(endExclusive);
+
+  try {
+    // 1) Основной вариант: точный диапазон
+    const url =
+      `${MINI_CALENDAR_API_URL}?action=gcal_events` +
+      `&from=${encodeURIComponent(fromISO)}` +
+      `&to=${encodeURIComponent(toISO)}` +
+      `&_=${Date.now()}`;
+
+    const res = await fetch(url, { cache: "no-store" });
+    const text = await res.text();
+
+    let data = null;
+    try { data = JSON.parse(text); } catch (_) { data = null; }
+
+    // Если backend не вернул events — пробуем fallback (но он НЕ спасёт январь, если backend не умеет from/to)
+    if (!data || data.ok !== true || !Array.isArray(data.events)) {
+      const fallbackUrl =
+        `${MINI_CALENDAR_API_URL}?action=gcal_events&range=month&_=${Date.now()}`;
+      const res2 = await fetch(fallbackUrl, { cache: "no-store" });
+      data = await res2.json();
+    }
+
+    const events = Array.isArray(data?.events) ? data.events : [];
+
+    const startMs = startDay.getTime();
+    const endMs = endDay.getTime();
+
+    for (const ev of events) {
+      if (String(ev?.calendarType || "").toLowerCase() !== "holiday") continue;
+
+      const iso = String(ev?.start || "").slice(0, 10);
+      if (!iso) continue;
+
+      const d = parseISODate(iso);
+      if (!d) continue;
+
+      const t = getDayStart(d).getTime();
+      if (t >= startMs && t <= endMs) {
+        HOLIDAY_SET.add(iso);
+      }
+    }
+  } catch (e) {
+    console.warn("holidays load failed:", e);
+  }
+}
+
+function applyHolidayUI_() {
+  const ensureBadge = (container) => {
+    if (!container) return;
+    let b = container.querySelector(":scope > .sch-holiday-badge");
+    if (!b) {
+      b = document.createElement("span");
+      b.className = "sch-holiday-badge";
+      b.textContent = "Свято";
+      container.appendChild(b);
+    }
+  };
+
+  const removeBadge = (container) => {
+    if (!container) return;
+    const b = container.querySelector(":scope > .sch-holiday-badge");
+    if (b) b.remove();
+  };
+
+  // =========================
+  // ✅ DAY: бейдж рядом с верхним заголовком "День ..."
+  // =========================
+  try {
+    const isoDay = toISODate_(getDayStart(currentDate));
+    const hasDayHoliday = HOLIDAY_SET.has(isoDay);
+
+    if (weekLabelEl) {
+      // чтобы бейдж красиво стоял рядом с текстом
+      weekLabelEl.classList.add("week-day-title--flex");
+      if (hasDayHoliday) ensureBadge(weekLabelEl);
+      else removeBadge(weekLabelEl);
+    }
+  } catch (_) {}
+
+  // =========================
+  // Week/Month cards (заголовок дня)
+  // =========================
+  document.querySelectorAll(".week-day-card[data-iso]").forEach(card => {
+    const iso = card.getAttribute("data-iso");
+    const has = iso && HOLIDAY_SET.has(iso);
+
+    card.classList.toggle("has-holiday", !!has);
+
+    const title = card.querySelector(".week-day-title");
+    if (!title) return;
+
+    title.classList.add("week-day-title--flex");
+
+    if (has) ensureBadge(title);
+    else removeBadge(title);
+  });
+
+  // =========================
+  // Role timeline headers
+  // =========================
+  document.querySelectorAll(".week-role-head--day[data-iso]").forEach(head => {
+    const iso = head.getAttribute("data-iso");
+    const has = iso && HOLIDAY_SET.has(iso);
+
+    head.classList.toggle("has-holiday", !!has);
+    head.classList.add("week-role-head--dayflex");
+
+    if (has) ensureBadge(head);
+    else removeBadge(head);
+  });
+}
+
   function setLoading(on, text = "Завантаження...") {
     if (!loaderEl) return;
     if (loaderTextEl) loaderTextEl.textContent = text;
@@ -646,233 +805,255 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   function renderWeekBlocks(roleFilter = "all") {
-    const byDate = new Map();
-    currentRows.forEach(r => {
-      if (!byDate.has(r.date)) byDate.set(r.date, []);
-      byDate.get(r.date).push(r);
-    });
+  const byDate = new Map();
+  currentRows.forEach(r => {
+    if (!byDate.has(r.date)) byDate.set(r.date, []);
+    byDate.get(r.date).push(r);
+  });
 
-    const dates = Array.from(byDate.keys()).sort();
-    if (!dates.length) {
-      scheduleContentEl.innerHTML = "<p style='color:#6b7280;font-weight:700;'>Немає даних.</p>";
-      return;
-    }
-
-    let html = `<div class="week-blocks">`;
-    dates.forEach(dateStr => {
-      const d = new Date(dateStr);
-      const title = `${getWeekdayName(d)} ${formatDate(d)}`;
-      html += `
-        <div class="week-day-card">
-          <div class="week-day-title">${title}</div>
-          <div class="week-day-body" data-week-day="${dateStr}"></div>
-        </div>
-      `;
-    });
-    html += `</div>`;
-
-    scheduleContentEl.innerHTML = html;
-
-    dates.forEach(dateStr => {
-      const host = scheduleContentEl.querySelector(`[data-week-day="${dateStr}"]`);
-      if (!host) return;
-      renderDayGridCells(byDate.get(dateStr), host, roleFilter);
-    });
+  const dates = Array.from(byDate.keys()).sort();
+  if (!dates.length) {
+    scheduleContentEl.innerHTML = "<p style='color:#6b7280;font-weight:700;'>Немає даних.</p>";
+    return;
   }
 
+  let html = `<div class="week-blocks">`;
+
+  dates.forEach(dateStr => {
+    // dateStr уже YYYY-MM-DD
+    const d = parseISODate(dateStr) || new Date(dateStr);
+    const title = `${getWeekdayName(d)} ${formatDate(d)}`;
+
+    html += `
+      <div class="week-day-card" data-iso="${dateStr}">
+        <div class="week-day-title">${title}</div>
+        <div class="week-day-body" data-week-day="${dateStr}"></div>
+      </div>
+    `;
+  });
+
+  html += `</div>`;
+  scheduleContentEl.innerHTML = html;
+
+  dates.forEach(dateStr => {
+    const host = scheduleContentEl.querySelector(`[data-week-day="${dateStr}"]`);
+    if (!host) return;
+    renderDayGridCells(byDate.get(dateStr), host, roleFilter);
+  });
+
+  // если у тебя уже вставлены функции holidays — тут можно сразу применить (не обязательно)
+  // applyHolidayUI_();
+}
   function renderMonthDayList(roleFilter = "all") {
-    const byDate = new Map();
-    currentRows.forEach(r => {
-      if (!r.date) return;
-      if (!byDate.has(r.date)) byDate.set(r.date, []);
-      byDate.get(r.date).push(r);
-    });
+  const byDate = new Map();
+  currentRows.forEach(r => {
+    if (!r.date) return;
+    if (!byDate.has(r.date)) byDate.set(r.date, []);
+    byDate.get(r.date).push(r);
+  });
 
-    const range = getMonthRange(currentDate);
-    const days = [];
-    for (let d = new Date(range.start); d <= range.end; d.setDate(d.getDate() + 1)) {
-      const day = new Date(d);
-      day.setHours(0, 0, 0, 0);
-      days.push(day);
-    }
-
-    let html = `<div class="week-blocks month-blocks">`;
-    days.forEach(day => {
-      const iso = toISODate_(day);
-      const title = `${getWeekdayName(day)} ${formatDate(day)}`;
-      html += `
-        <div class="week-day-card">
-          <div class="week-day-title">${title}</div>
-          <div class="week-day-body" data-month-day="${iso}"></div>
-        </div>
-      `;
-    });
-    html += `</div>`;
-    scheduleContentEl.innerHTML = html;
-
-    days.forEach(day => {
-      const iso = toISODate_(day);
-      const host = scheduleContentEl.querySelector(`[data-month-day="${iso}"]`);
-      if (!host) return;
-      const rows = (byDate.get(iso) || []);
-      renderDayGridCells(rows, host, roleFilter);
-    });
+  const range = getMonthRange(currentDate);
+  const days = [];
+  for (let d = new Date(range.start); d <= range.end; d.setDate(d.getDate() + 1)) {
+    const day = new Date(d);
+    day.setHours(0, 0, 0, 0);
+    days.push(day);
   }
 
-  function renderWeekRoleTimeline(roleKey) {
-    if (!weekCompactEl) return;
+  let html = `<div class="week-blocks month-blocks">`;
 
-    scheduleContentEl.style.display = "none";
-    weekCompactEl.style.display = "block";
+  days.forEach(day => {
+    const iso = toISODate_(day);
+    const title = `${getWeekdayName(day)} ${formatDate(day)}`;
 
-    const range = getWeekRange(currentDate);
-    const days = [];
-    for (let d = new Date(range.start); d <= range.end; d.setDate(d.getDate() + 1)) {
-      const day = new Date(d);
-      day.setHours(0, 0, 0, 0);
-      days.push(day);
-    }
+    html += `
+      <div class="week-day-card" data-iso="${iso}">
+        <div class="week-day-title">${title}</div>
+        <div class="week-day-body" data-month-day="${iso}"></div>
+      </div>
+    `;
+  });
 
-    const roleCols =
-      roleKey === "admin" ? 3 :
-      roleKey === "kellner" ? 4 :
-      roleKey === "kueche" ? 4 :
-      2;
+  html += `</div>`;
+  scheduleContentEl.innerHTML = html;
 
-    const roleTitle =
-      roleKey === "admin" ? "Адміни" :
-      roleKey === "kellner" ? "Офіціанти" :
-      roleKey === "kueche" ? "Кухня" :
-      "Прибирання";
+  days.forEach(day => {
+    const iso = toISODate_(day);
+    const host = scheduleContentEl.querySelector(`[data-month-day="${iso}"]`);
+    if (!host) return;
+    const rows = (byDate.get(iso) || []);
+    renderDayGridCells(rows, host, roleFilter);
+  });
 
-    const times = getFixedTimes_();
+  // если у тебя уже вставлены holidays-функции — можно сразу применить
+  // applyHolidayUI_();
+}
 
-    const map = new Map();
-    currentRows.forEach(r => {
-      if (!r.date || !r.time) return;
-      map.set(`${r.date}|${r.time}`, r);
-    });
+function renderWeekRoleTimeline(roleKey) {
+  if (!weekCompactEl) return;
 
-    let gridCols = `70px `;
-    const cellMin = (roleCols === 4) ? 30 : (roleCols === 3) ? 40 : 48;
-    const sepW = 8;
+  scheduleContentEl.style.display = "none";
+  weekCompactEl.style.display = "block";
 
-    days.forEach((_, idx) => {
-      gridCols += `repeat(${roleCols}, minmax(${cellMin}px, 1fr)) `;
-      if (idx !== days.length - 1) gridCols += `${sepW}px `;
-    });
+  const range = getWeekRange(currentDate);
+  const days = [];
+  for (let d = new Date(range.start); d <= range.end; d.setDate(d.getDate() + 1)) {
+    const day = new Date(d);
+    day.setHours(0, 0, 0, 0);
+    days.push(day);
+  }
 
-    let html = `
-      <div class="week-role-wrap">
-        <div class="week-role-title">${roleTitle}</div>
-        <div class="week-role-grid" style="grid-template-columns:${gridCols.trim()};">
+  const roleCols =
+    roleKey === "admin" ? 3 :
+    roleKey === "kellner" ? 4 :
+    roleKey === "kueche" ? 4 :
+    2;
+
+  const roleTitle =
+    roleKey === "admin" ? "Адміни" :
+    roleKey === "kellner" ? "Офіціанти" :
+    roleKey === "kueche" ? "Кухня" :
+    "Прибирання";
+
+  const times = getFixedTimes_();
+
+  const map = new Map();
+  currentRows.forEach(r => {
+    if (!r.date || !r.time) return;
+    map.set(`${r.date}|${r.time}`, r);
+  });
+
+  let gridCols = `70px `;
+  const cellMin = (roleCols === 4) ? 30 : (roleCols === 3) ? 40 : 48;
+  const sepW = 8;
+
+  days.forEach((_, idx) => {
+    gridCols += `repeat(${roleCols}, minmax(${cellMin}px, 1fr)) `;
+    if (idx !== days.length - 1) gridCols += `${sepW}px `;
+  });
+
+  let html = `
+    <div class="week-role-wrap">
+      <div class="week-role-title">${roleTitle}</div>
+      <div class="week-role-grid" style="grid-template-columns:${gridCols.trim()};">
+  `;
+
+  html += `<div class="week-role-head week-role-head--time">Zeit</div>`;
+
+  let colCursor = 2;
+  days.forEach((day, idx) => {
+    const dateISO = toISODate_(day);
+    const head = day.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
+
+    // ✅ ВАЖНО: data-iso для holiday badge
+    html += `
+      <div class="week-role-head week-role-head--day"
+           data-iso="${dateISO}"
+           style="grid-column:${colCursor} / span ${roleCols};">
+        ${head}
+      </div>
     `;
 
-    html += `<div class="week-role-head week-role-head--time">Zeit</div>`;
+    colCursor += roleCols;
 
-    let colCursor = 2;
-    days.forEach((day, idx) => {
-      const head = day.toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
-      html += `<div class="week-role-head week-role-head--day" style="grid-column:${colCursor} / span ${roleCols};">${head}</div>`;
-      colCursor += roleCols;
-      if (idx !== days.length - 1) {
-        html += `<div class="week-role-sep week-role-sep--head" style="grid-column:${colCursor};"></div>`;
-        colCursor += 1;
-      }
-    });
+    if (idx !== days.length - 1) {
+      html += `<div class="week-role-sep week-role-sep--head" style="grid-column:${colCursor};"></div>`;
+      colCursor += 1;
+    }
+  });
 
-    times.forEach((time, tIndex) => {
-      const gridRow = tIndex + 2;
-      html += `<div class="week-role-time" style="grid-row:${gridRow};grid-column:1;">${time}</div>`;
+  times.forEach((time, tIndex) => {
+    const gridRow = tIndex + 2;
+    html += `<div class="week-role-time" style="grid-row:${gridRow};grid-column:1;">${time}</div>`;
 
-      let col = 2;
+    let col = 2;
 
-      days.forEach((day, dayIndex) => {
-        const dateISO = toISODate_(day);
+    days.forEach((day, dayIndex) => {
+      const dateISO = toISODate_(day);
 
-        for (let slot = 0; slot < roleCols; slot++) {
-          const rowObj = map.get(`${dateISO}|${time}`) || null;
-          const name = rowObj ? String(rowObj[roleKey]?.[slot] || "").trim() : "";
+      for (let slot = 0; slot < roleCols; slot++) {
+        const rowObj = map.get(`${dateISO}|${time}`) || null;
+        const name = rowObj ? String(rowObj[roleKey]?.[slot] || "").trim() : "";
 
-          const prevTime = times[tIndex - 1] || null;
-          const nextTime = times[tIndex + 1] || null;
+        const prevTime = times[tIndex - 1] || null;
+        const nextTime = times[tIndex + 1] || null;
 
-          const prevRow = prevTime ? (map.get(`${dateISO}|${prevTime}`) || null) : null;
-          const nextRow = nextTime ? (map.get(`${dateISO}|${nextTime}`) || null) : null;
+        const prevRow = prevTime ? (map.get(`${dateISO}|${prevTime}`) || null) : null;
+        const nextRow = nextTime ? (map.get(`${dateISO}|${nextTime}`) || null) : null;
 
-          const prevName = prevRow ? String(prevRow[roleKey]?.[slot] || "").trim() : "";
-          const nextName = nextRow ? String(nextRow[roleKey]?.[slot] || "").trim() : "";
+        const prevName = prevRow ? String(prevRow[roleKey]?.[slot] || "").trim() : "";
+        const nextName = nextRow ? String(nextRow[roleKey]?.[slot] || "").trim() : "";
 
-          const isStart = !!name && name !== prevName;
-          let isEnd = !!name && name !== nextName;
+        const isStart = !!name && name !== prevName;
+        let isEnd = !!name && name !== nextName;
 
-          if (name && !isStart) { col++; continue; }
+        if (name && !isStart) { col++; continue; }
 
-          const styleStr = name ? getPillStyleForName(name) : "";
-          const label = isStart ? shortName_(name) : "";
+        const styleStr = name ? getPillStyleForName(name) : "";
+        const label = isStart ? shortName_(name) : "";
 
-          let blockSpan = 1;
-          let timeText = "";
-          let addOverlay = false;
-          let hideOverlay = false;
+        let blockSpan = 1;
+        let timeText = "";
+        let addOverlay = false;
+        let hideOverlay = false;
 
-          if (name && isStart) {
-            let e = tIndex;
-            while (e < times.length - 1) {
-              const nr = map.get(`${dateISO}|${times[e + 1]}`) || null;
-              const nn = nr ? String(nr[roleKey]?.[slot] || "").trim() : "";
-              if (nn !== name) break;
-              e++;
-            }
-
-            blockSpan = e - tIndex + 1;
-            if (blockSpan > 1) isEnd = true;
-
-            if (blockSpan > 1) {
-              timeText = `${timePretty_(times[tIndex])}–${timePretty_(times[e])}`;
-              addOverlay = true;
-              hideOverlay = blockSpan <= 2;
-            }
+        if (name && isStart) {
+          let e = tIndex;
+          while (e < times.length - 1) {
+            const nr = map.get(`${dateISO}|${times[e + 1]}`) || null;
+            const nn = nr ? String(nr[roleKey]?.[slot] || "").trim() : "";
+            if (nn !== name) break;
+            e++;
           }
 
-          const clickable = rowObj ? "week-role-cell--click" : "week-role-cell--nocell";
+          blockSpan = e - tIndex + 1;
+          if (blockSpan > 1) isEnd = true;
 
-          const rowsListAttr = (name && isStart && blockSpan > 1)
-            ? ` data-rows="${times.slice(tIndex, tIndex + blockSpan)
-                .map(t => (map.get(`${dateISO}|${t}`) || {}).row)
-                .filter(Boolean)
-                .join(',')}"`
-            : "";
-
-          html += `
-            <div class="week-role-cell ${clickable} ${name ? "week-role-cell--filled" : "week-role-cell--empty"} ${isStart ? "week-role-cell--start" : ""} ${isEnd ? "week-role-cell--end" : ""}"
-                 style="grid-row:${gridRow}${name && isStart ? ` / span ${blockSpan}` : ""};grid-column:${col};${styleStr}"
-                 ${rowObj ? `data-row="${rowObj.row}"` : ""}
-                 ${rowsListAttr}
-                 data-role="${roleKey}"
-                 data-slot="${slot}">
-              <span class="week-role-cell__label" title="${name}" data-full="${name}">${label}</span>
-              ${addOverlay ? `
-                <span class="block-time-overlay" data-len="${blockSpan}" ${hideOverlay ? 'data-hide="1"' : ""}>
-                  <span class="block-time-vert">${timeText}</span>
-                </span>
-              ` : ""}
-            </div>
-          `;
-          col++;
+          if (blockSpan > 1) {
+            timeText = `${timePretty_(times[tIndex])}–${timePretty_(times[e])}`;
+            addOverlay = true;
+            hideOverlay = blockSpan <= 2;
+          }
         }
 
-        if (dayIndex !== days.length - 1) {
-          html += `<div class="week-role-sep" style="grid-row:${gridRow};grid-column:${col};"></div>`;
-          col++;
-        }
-      });
+        const clickable = rowObj ? "week-role-cell--click" : "week-role-cell--nocell";
+
+        const rowsListAttr = (name && isStart && blockSpan > 1)
+          ? ` data-rows="${times.slice(tIndex, tIndex + blockSpan)
+              .map(t => (map.get(`${dateISO}|${t}`) || {}).row)
+              .filter(Boolean)
+              .join(',')}"`
+          : "";
+
+        html += `
+          <div class="week-role-cell ${clickable} ${name ? "week-role-cell--filled" : "week-role-cell--empty"} ${isStart ? "week-role-cell--start" : ""} ${isEnd ? "week-role-cell--end" : ""}"
+               style="grid-row:${gridRow}${name && isStart ? ` / span ${blockSpan}` : ""};grid-column:${col};${styleStr}"
+               ${rowObj ? `data-row="${rowObj.row}"` : ""}
+               ${rowsListAttr}
+               data-role="${roleKey}"
+               data-slot="${slot}">
+            <span class="week-role-cell__label" title="${name}" data-full="${name}">${label}</span>
+            ${addOverlay ? `
+              <span class="block-time-overlay" data-len="${blockSpan}" ${hideOverlay ? 'data-hide="1"' : ""}>
+                <span class="block-time-vert">${timeText}</span>
+              </span>
+            ` : ""}
+          </div>
+        `;
+        col++;
+      }
+
+      if (dayIndex !== days.length - 1) {
+        html += `<div class="week-role-sep" style="grid-row:${gridRow};grid-column:${col};"></div>`;
+        col++;
+      }
     });
+  });
 
-    html += `</div></div>`;
-    weekCompactEl.innerHTML = html;
-    applyDynamicLabels(weekCompactEl);
-  }
+  html += `</div></div>`;
+  weekCompactEl.innerHTML = html;
+  applyDynamicLabels(weekCompactEl);
+}
 
   // ==============================
   // Filters show/hide
@@ -915,88 +1096,119 @@ document.addEventListener("DOMContentLoaded", async () => {
   // ==============================
   // Main render
   // ==============================
+  function refreshHolidaysForCurrentRange_() {
+  let start, end;
+
+  if (currentMode === MODE_DAY) {
+    const d = getDayStart(currentDate);
+    start = d; end = d;
+  } else if (currentMode === MODE_WEEK) {
+    const r = getWeekRange(currentDate);
+    start = r.start; end = r.end;
+  } else {
+    const r = getMonthRange(currentDate);
+    start = r.start; end = r.end;
+  }
+
+  loadHolidaysForRange_(start, end).then(() => {
+    setTimeout(applyHolidayUI_, 0);
+  });
+}
   function renderForCurrentPeriod() {
-    if (!allRows.length) {
-      weekLabelEl.textContent = "Немає даних";
-      subLabelEl.textContent = " ";
-      scheduleContentEl.innerHTML = "<p style='color:#6b7280;font-weight:700;'>Немає даних.</p>";
-      setWeekFilterVisible_(false);
-      setMonthFilterVisible_(false);
-      return;
-    }
+  if (!allRows.length) {
+    weekLabelEl.textContent = "Немає даних";
+    subLabelEl.textContent = " ";
+    scheduleContentEl.innerHTML = "<p style='color:#6b7280;font-weight:700;'>Немає даних.</p>";
+    setWeekFilterVisible_(false);
+    setMonthFilterVisible_(false);
+    return;
+  }
 
-    let start, end;
+  let start, end;
 
-    if (currentMode === MODE_DAY) {
-      const d = getDayStart(currentDate);
-      start = d; end = d;
-      weekLabelEl.textContent = `День ${formatDate(d)} (${getWeekdayName(d)})`;
-      setWeekFilterVisible_(false);
-      setMonthFilterVisible_(false);
-    } else if (currentMode === MODE_WEEK) {
-      const range = getWeekRange(currentDate);
-      start = range.start; end = range.end;
-      weekLabelEl.textContent = `Тиждень ${formatDate(range.start)} — ${formatDate(range.end)}`;
-      setWeekFilterVisible_(true);
-      setMonthFilterVisible_(false);
-    } else {
-      const range = getMonthRange(currentDate);
-      start = range.start; end = range.end;
-      weekLabelEl.textContent = `Місяць ${formatMonthYear(range.start)}`;
-      setWeekFilterVisible_(false);
-      setMonthFilterVisible_(true);
-    }
+  if (currentMode === MODE_DAY) {
+    const d = getDayStart(currentDate);
+    start = d; end = d;
+    weekLabelEl.textContent = `День ${formatDate(d)} (${getWeekdayName(d)})`;
+    setWeekFilterVisible_(false);
+    setMonthFilterVisible_(false);
+  } else if (currentMode === MODE_WEEK) {
+    const range = getWeekRange(currentDate);
+    start = range.start; end = range.end;
+    weekLabelEl.textContent = `Тиждень ${formatDate(range.start)} — ${formatDate(range.end)}`;
+    setWeekFilterVisible_(true);
+    setMonthFilterVisible_(false);
+  } else {
+    const range = getMonthRange(currentDate);
+    start = range.start; end = range.end;
+    weekLabelEl.textContent = `Місяць ${formatMonthYear(range.start)}`;
+    setWeekFilterVisible_(false);
+    setMonthFilterVisible_(true);
+  }
 
-    const startMs = start.getTime();
-    const endMs = end.getTime();
+  const startMs = start.getTime();
+  const endMs = end.getTime();
 
-    currentRows = allRows.filter((r) => {
-      const t = r.dateObj.getTime();
-      return t >= startMs && t <= endMs;
+  currentRows = allRows.filter((r) => {
+    const t = r.dateObj.getTime();
+    return t >= startMs && t <= endMs;
+  });
+
+  subLabelEl.textContent = `Змін: ${currentRows.length}`;
+
+  // helper: обновить свята после рендера (даём DOM отрисоваться)
+  const refreshHolidaysAfterRender_ = () => {
+    if (typeof loadHolidaysForRange_ !== "function" || typeof applyHolidayUI_ !== "function") return;
+    loadHolidaysForRange_(start, end).then(() => {
+      // чуть позже, чтобы успели вставиться week/month cards или timeline grid
+      setTimeout(() => applyHolidayUI_(), 0);
     });
+  };
 
-    subLabelEl.textContent = `Змін: ${currentRows.length}`;
+  // DAY
+  if (currentMode === MODE_DAY) {
+    if (weekCompactEl) { weekCompactEl.style.display = "none"; weekCompactEl.innerHTML = ""; }
+    scheduleContentEl.style.display = "";
+    renderDayGridCells(currentRows, scheduleContentEl, "all");
 
-    if (currentMode === MODE_DAY) {
+    restoreAnchorScroll_();
+    refreshHolidaysAfterRender_();
+    return;
+  }
+
+  // WEEK
+  if (currentMode === MODE_WEEK) {
+    const role = getActiveWeekFilter_();
+    if (role === "all") {
       if (weekCompactEl) { weekCompactEl.style.display = "none"; weekCompactEl.innerHTML = ""; }
       scheduleContentEl.style.display = "";
-      renderDayGridCells(currentRows, scheduleContentEl, "all");
-      restoreAnchorScroll_();
-      return;
-    }
-
-    if (currentMode === MODE_WEEK) {
-      const role = getActiveWeekFilter_();
-      if (role === "all") {
-        if (weekCompactEl) { weekCompactEl.style.display = "none"; weekCompactEl.innerHTML = ""; }
-        scheduleContentEl.style.display = "";
-        renderWeekBlocks("all");
-      } else {
-        renderWeekRoleTimeline(role);
-      }
-      restoreAnchorScroll_();
-      return;
-    }
-
-    // MONTH
-    if (weekCompactEl) { weekCompactEl.style.display = "none"; weekCompactEl.innerHTML = ""; }
-
-    const mRole = getActiveMonthFilter_();
-    monthRoleViewEl.style.display = "none";
-    monthRoleViewEl.innerHTML = "";
-    scheduleContentEl.style.display = "";
-
-    // В месяце показываем список дней (как было)
-    if (mRole === "all") {
-      renderMonthDayList("all");
+      renderWeekBlocks("all");
     } else {
-      // упрощение: в этом build мы оставляем список дней (не календарь по неделям),
-      // чтобы ничего не ломать. Если надо — добавим календарь отдельно.
-      renderMonthDayList(mRole);
+      renderWeekRoleTimeline(role);
     }
 
     restoreAnchorScroll_();
+    refreshHolidaysAfterRender_();
+    return;
   }
+
+  // MONTH
+  if (weekCompactEl) { weekCompactEl.style.display = "none"; weekCompactEl.innerHTML = ""; }
+
+  const mRole = getActiveMonthFilter_();
+  monthRoleViewEl.style.display = "none";
+  monthRoleViewEl.innerHTML = "";
+  scheduleContentEl.style.display = "";
+
+  if (mRole === "all") {
+    renderMonthDayList("all");
+  } else {
+    renderMonthDayList(mRole);
+  }
+
+  restoreAnchorScroll_();
+  refreshHolidaysAfterRender_();
+}
 
   async function setMode(mode) {
     if (mode === currentMode) return;
@@ -1435,28 +1647,30 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // week filter clicks
-  if (weekFilterEl) {
-    weekFilterEl.querySelectorAll("[data-week-filter]").forEach(btn => {
-      btn.addEventListener("click", () => {
-        weekFilterEl.querySelectorAll("[data-week-filter]").forEach(b =>
-          b.classList.remove("week-filter__pill--active")
-        );
-        btn.classList.add("week-filter__pill--active");
+ if (weekFilterEl) {
+  weekFilterEl.querySelectorAll("[data-week-filter]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      weekFilterEl.querySelectorAll("[data-week-filter]").forEach(b =>
+        b.classList.remove("week-filter__pill--active")
+      );
+      btn.classList.add("week-filter__pill--active");
 
-        const role = btn.dataset.weekFilter;
-        if (currentMode !== MODE_WEEK) return;
+      const role = btn.dataset.weekFilter;
+      if (currentMode !== MODE_WEEK) return;
 
-        if (role === "all") {
-          if (weekCompactEl) { weekCompactEl.style.display = "none"; weekCompactEl.innerHTML = ""; }
-          scheduleContentEl.style.display = "";
-          renderWeekBlocks("all");
-        } else {
-          renderWeekRoleTimeline(role);
-        }
-      });
+      if (role === "all") {
+        if (weekCompactEl) { weekCompactEl.style.display = "none"; weekCompactEl.innerHTML = ""; }
+        scheduleContentEl.style.display = "";
+        renderWeekBlocks("all");
+      } else {
+        renderWeekRoleTimeline(role);
+      }
+
+      // ✅ ВАЖНО: после перерендера вернуть бейджи
+      refreshHolidaysForCurrentRange_();
     });
-  }
-
+  });
+}
   // month filter clicks
   monthFilterEl.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-month-filter]");

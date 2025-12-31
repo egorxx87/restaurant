@@ -15,6 +15,8 @@ const TASKS_API_URL =
 // календарь берём из того же скрипта, где ты добавил action "gcal_events"
 const CALENDAR_API_URL =
   "https://script.google.com/macros/s/AKfycbyQ4r7ZG3xdkyD30f0je-gFW2GZiQ4R7XApdN1R-tEc2WYy0md5TAz0-rTJd7M67P44Kw/exec";
+  const MINI_CALENDAR_API_URL =
+  "https://script.google.com/macros/s/AKfycbw-yTbvyKAw8cO6j2dkopRYbGx5aHCB7nAxcG8M5yXAKGGLL8plNe9hUkiPO86LmZTD2A/exec";
 
 const ADMIN_COLS = 3;
 let _schedCache = null;
@@ -146,7 +148,7 @@ function hideDutyNote(){
 /* =========================
    RESERVATIONS (today/tomorrow)
 ========================= */
-
+applyHomeScheduleHolidayBadges_();
 
 
 
@@ -507,10 +509,17 @@ function initHomeEvents(){
     buttons.forEach(x => x.classList.remove("btn--active"));
     b.classList.add("btn--active");
     loadHomeEvents(b.dataset.range);
+
+    // ⬅️ обновляем бейджи при переключении
+    initHomeHolidayBadges_();
   }));
 
   loadHomeEvents("today");
+
+  // ⬅️ первый запуск бейджей "Свято"
+  initHomeHolidayBadges_();
 }
+
 
 async function loadHomeEvents(range){
   const list = document.getElementById("eventsList");
@@ -643,4 +652,72 @@ function escapeHtml(s){
     .replaceAll(">","&gt;")
     .replaceAll('"',"&quot;")
     .replaceAll("'","&#039;");
+}
+function pad2_(n){ return String(n).padStart(2,"0"); }
+function isoLocal_(d){
+  const x = new Date(d);
+  return `${x.getFullYear()}-${pad2_(x.getMonth()+1)}-${pad2_(x.getDate())}`;
+}
+function addDays_(d, n){
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  x.setHours(0,0,0,0);
+  return x;
+}
+
+async function fetchHolidaySetForWeek_(){
+  try{
+    // важно: берём week, чтобы покрыть и сегодня, и завтра, и переход года
+    const res = await fetch(`${MINI_CALENDAR_API_URL}?action=gcal_events&range=week&_=${Date.now()}`, { cache:"no-store" });
+    const data = await res.json();
+    const events = Array.isArray(data?.events) ? data.events : [];
+
+    const set = new Set();
+    for (const ev of events){
+      if (String(ev?.calendarType || "").toLowerCase() !== "holiday") continue;
+
+      // FIX: у allDay в ICS может быть start в UTC (например 2025-12-31T23:00Z),
+      // поэтому берём ЛОКАЛЬНУЮ дату из Date().
+      const dt = new Date(ev.start);
+      if (isNaN(dt)) continue;
+      set.add(isoLocal_(dt));
+    }
+    return set;
+  } catch(e){
+    console.warn("home holidays load failed:", e);
+    return new Set();
+  }
+}
+
+function setHolidayBadgeOnTitle_(titleEl, on){
+  if (!titleEl) return;
+
+  let b = titleEl.querySelector(":scope > .home-holiday-badge");
+  if (on){
+    if (!b){
+      b = document.createElement("span");
+      b.className = "home-holiday-badge";
+      b.textContent = "Свято";
+      titleEl.appendChild(b);
+    }
+  } else {
+    if (b) b.remove();
+  }
+}
+
+async function applyHomeScheduleHolidayBadges_(){
+  const todayList = document.getElementById("schedule-today");
+  const tomorrowList = document.getElementById("schedule-tomorrow");
+  if (!todayList || !tomorrowList) return;
+
+  const todayTitle = todayList.closest(".mini-card")?.querySelector(".mini-title");
+  const tomorrowTitle = tomorrowList.closest(".mini-card")?.querySelector(".mini-title");
+
+  const holidaySet = await fetchHolidaySetForWeek_();
+
+  const todayISO = isoLocal_(new Date());
+  const tomorrowISO = isoLocal_(addDays_(new Date(), 1));
+
+  setHolidayBadgeOnTitle_(todayTitle, holidaySet.has(todayISO));
+  setHolidayBadgeOnTitle_(tomorrowTitle, holidaySet.has(tomorrowISO));
 }

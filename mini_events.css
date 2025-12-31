@@ -234,3 +234,34 @@
   .ta-badge__icon{ width: 16px; height: 16px; font-size: 11px; }
   .ta-rank{ display:none; } /* чтобы не раздувало на мобиле */
 }
+/* ===== Schedule: Holiday day ===== */
+.week-day-card.has-holiday,
+.week-role-head--day.has-holiday {
+  border: 1.5px solid rgba(220, 38, 38, 0.35);
+  border-radius: 14px;
+  background: rgba(254, 226, 226, 0.18);
+}
+
+.week-day-title {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.sch-holiday-badge{
+  flex:0 0 auto;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #991b1b;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+@media (max-width: 640px){
+  .week-day-title{ align-items:flex-start; }
+  .sch-holiday-badge{ margin-top:4px; }
+}
