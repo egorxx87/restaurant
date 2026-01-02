@@ -61,8 +61,6 @@ const MINI_CALENDAR_API_URL =
   const statsTableEl = document.getElementById("stats-table");
   const statsMonthCurrentBtn = document.getElementById("stats-month-current");
   const statsMonthPrevBtn = document.getElementById("stats-month-prev");
-  const statsMonthInput = document.getElementById("stats-month-input");
-  const statsMonthAutoBtn = document.getElementById("stats-month-auto");
   const statsRoleButtons = document.querySelectorAll("[data-stats-role]");
 
   // WEEK FILTER
@@ -86,10 +84,6 @@ const MINI_CALENDAR_API_URL =
   let currentRows = [];
   let pickerState = null;
 
-
-  // ✅ month cache (for stats across months)
-  let MONTH_CACHE = {}; // { 'YYYY-MM': [rawRows...] }
-  let MONTH_LOADED = new Set();
   // Colors (shared)
   let NAME_COLORS = {};
 
@@ -104,9 +98,7 @@ const MINI_CALENDAR_API_URL =
     role: "all",
     data: null,
     monthLabels: {},
-    slotMapping: { current: "current", previous: "previous" },
-    isCustom: false,
-    customMonthKey: ""
+    slotMapping: { current: "current", previous: "previous" }
   };
 
   // ==============================
@@ -537,35 +529,6 @@ function applyHolidayUI_() {
     return out;
   }
 
-
-async function ensureMonthsLoaded_(months, opts = {}) {
-  const { force = false } = opts;
-  for (const m of months) {
-    if (!force && MONTH_LOADED.has(m)) continue;
-    const data = await apiGet(`${SCHEDULE_API_URL}?action=list&month=${m}`);
-    const rows = (data && data.rows) ? data.rows : [];
-    MONTH_CACHE[m] = rows;
-    MONTH_LOADED.add(m);
-  }
-  const merged = Object.values(MONTH_CACHE).flat();
-  allRows = merged.map((r) => {
-    const rawDate = String(r.date || "").trim();
-    const dObj = parseISODate(rawDate);
-    const isoDay = dObj ? toISODate_(dObj) : "";
-    return {
-      row: Number(r.row),
-      date: isoDay,
-      dateObj: dObj,
-      time: normalizeTime(r.time),
-      admin: normalizeSlots(r.admin, 3),
-      kellner: normalizeSlots(r.kellner, 4),
-      kueche: normalizeSlots(r.kueche, 4),
-      reinigung: normalizeSlots(r.reinigung, 2),
-    };
-  }).filter(r => r.dateObj && r.date);
-}
-
-
   async function loadScheduleForPeriod_() {
     let start, end;
 
@@ -584,15 +547,33 @@ async function ensureMonthsLoaded_(months, opts = {}) {
     setLoading(true, `Завантажую: ${monthList.join(", ")}…`);
 
     try {
-      
-// ✅ (1) загрузка нужных месяцев в кеш (перезагружаем месяцы текущего периода, чтобы изменения сразу появлялись)
-await ensureMonthsLoaded_(monthList, { force: true });
+      const merged = [];
+      for (const m of monthList) {
+        const data = await apiGet(`${SCHEDULE_API_URL}?action=list&month=${m}`);
+        const rows = (data && data.rows) ? data.rows : [];
+        merged.push(...rows);
+      }
 
-// ✅ (2) allRows уже собран как union всех закешированных месяцев внутри ensureMonthsLoaded_
+      allRows = merged.map((r) => {
+        const rawDate = String(r.date || "").trim();
+        const dObj = parseISODate(rawDate);
+        const isoDay = dObj ? toISODate_(dObj) : "";
+
+        return {
+          row: Number(r.row),
+          date: isoDay,
+          dateObj: dObj,
+          time: normalizeTime(r.time),
+          admin: normalizeSlots(r.admin, 3),
+          kellner: normalizeSlots(r.kellner, 4),
+          kueche: normalizeSlots(r.kueche, 4),
+          reinigung: normalizeSlots(r.reinigung, 2),
+        };
+      }).filter(r => r.dateObj && r.date);
 
       rebuildRoleOptionsFromRows_();
       renderForCurrentPeriod();
-      if (sectionStats && sectionStats.style.display === "block") { await computeAllStats(); }
+      computeAllStats();
       setLoading(false);
     } catch (e) {
       setLoading(false);
@@ -1486,7 +1467,6 @@ function renderWeekRoleTimeline(roleKey) {
         (row[role] || []).forEach((name) => {
           const trimmed = (name || "").trim();
           if (!trimmed) return;
-          if (trimmed === "—" || trimmed === "-" || trimmed === "–" || trimmed === "«—»" || trimmed === "<<—>>") return;
 
           rowHasAnyWork = true;
 
@@ -1505,89 +1485,82 @@ function renderWeekRoleTimeline(roleKey) {
     return { persons, totals, usedDays: usedDaysSet.size, range: { start, end } };
   }
 
-async function computeAllStats() {
-  statsState.isCustom = false;
-  statsState.customMonthKey = "";
-  // ✅ базовая дата = то, что сейчас смотришь в расписании
-  const base = new Date(currentDate);
+  // Ensure we have months needed for stats loaded into allRows
+async function ensureMonthsLoaded_(monthKeys){
+  const want = Array.from(new Set((monthKeys||[]).filter(Boolean)));
+  if (!want.length) return;
 
-  const currentRange = getMonthRange(base);
-  const prevMonthDate = new Date(base.getFullYear(), base.getMonth() - 1, 15);
-  const prevPrevMonthDate = new Date(base.getFullYear(), base.getMonth() - 2, 15);
+  const have = new Set();
+  for (const r of allRows){
+    if (r && r.dateObj) have.add(monthKey_(r.dateObj));
+  }
 
-  const prevRange = getMonthRange(prevMonthDate);
-  const prevPrevRange = getMonthRange(prevPrevMonthDate);
+  const need = want.filter(m => !have.has(m));
+  if (!need.length) return;
 
-  // ✅ гарантированно подгружаем месяцы для статистики (текущий/прошлый/позапрошлый)
-  const m0 = monthKey_(currentRange.start);
-  const m1 = monthKey_(prevRange.start);
-  const m2 = monthKey_(prevPrevRange.start);
-  await ensureMonthsLoaded_([m0, m1, m2], { force: false });
+  for (const m of need){
+    const data = await apiGet(`${SCHEDULE_API_URL}?action=list&month=${m}`);
+    const rows = (data && data.rows) ? data.rows : [];
+    const mapped = rows.map((r) => {
+      const rawDate = String(r.date || "").trim();
+      const dObj = parseISODate(rawDate);
+      const isoDay = dObj ? toISODate_(dObj) : "";
+      return {
+        row: Number(r.row),
+        date: isoDay,
+        dateObj: dObj,
+        time: normalizeTime(r.time),
+        admin: normalizeSlots(r.admin, 3),
+        kellner: normalizeSlots(r.kellner, 4),
+        kueche: normalizeSlots(r.kueche, 4),
+        reinigung: normalizeSlots(r.reinigung, 2),
+      };
+    }).filter(x => x.dateObj && x.date);
 
-  if (!allRows.length) { statsState.data = null; renderStatsView(); return; }
+    // merge by unique sheet row id
+    const byRow = new Map(allRows.map(x => [x.row, x]));
+    mapped.forEach(x => byRow.set(x.row, x));
+    allRows = Array.from(byRow.values());
+  }
 
-  const currentStats = computeStatsForRange(currentRange.start, currentRange.end);
-  const previousStats = computeStatsForRange(prevRange.start, prevRange.end);
+  rebuildRoleOptionsFromRows_();
+}
+
+function computeAllStats(baseDate = currentDate){
+  if (!allRows || !allRows.length){
+    statsState.data = null;
+    renderStatsView();
+    return;
+  }
+
+  const base = getDayStart(baseDate || new Date());
+
+  const curRange = getMonthRange(base);
+  const prevDate = new Date(base.getFullYear(), base.getMonth() - 1, 15);
+  const prevPrevDate = new Date(base.getFullYear(), base.getMonth() - 2, 15);
+
+  const prevRange = getMonthRange(prevDate);
+  const prevPrevRange = getMonthRange(prevPrevDate);
+
+  const curStats = computeStatsForRange(curRange.start, curRange.end);
+  const prevStats = computeStatsForRange(prevRange.start, prevRange.end);
   const prevPrevStats = computeStatsForRange(prevPrevRange.start, prevPrevRange.end);
 
-  statsState.data = { current: currentStats, previous: previousStats, prevPrev: prevPrevStats };
+  statsState.data = { current: curStats, previous: prevStats, prevPrev: prevPrevStats };
+
   statsState.monthLabels = {
-    current: formatMonthYear(currentRange.start),
+    current: formatMonthYear(curRange.start),
     previous: formatMonthYear(prevRange.start),
-    prevPrev: formatMonthYear(prevPrevRange.start)
+    prevPrev: formatMonthYear(prevPrevRange.start),
   };
 
-  // первые 10 дней месяца: "Поточний" = прошлый
+  // как было: если первые 10 дней месяца — "Поточний" показывает прошлый
   statsState.slotMapping = (base.getDate() <= 10)
     ? { current: "previous", previous: "prevPrev" }
     : { current: "current", previous: "previous" };
 
-  statsState.activeSlot = "current";
   renderStatsView();
 }
-
-// ✅ Custom month picker: compute stats for exact YYYY-MM
-async function computeStatsForMonthKey_(ym){
-  const m = String(ym || "").trim();
-  const mm = m.match(/^(\d{4})-(\d{2})$/);
-  if (!mm) return;
-
-  const y = Number(mm[1]);
-  const mo = Number(mm[2]);
-  if (!y || !mo) return;
-
-  statsState.isCustom = true;
-  statsState.customMonthKey = `${y}-${pad2(mo)}`;
-
-  const base = new Date(y, mo - 1, 15);
-  const curRange = getMonthRange(base);
-  const prevDate = new Date(y, mo - 2, 15);
-  const prevRange = getMonthRange(prevDate);
-
-  const m0 = monthKey_(curRange.start);
-  const m1 = monthKey_(prevRange.start);
-  await ensureMonthsLoaded_([m0, m1], { force:false });
-
-  const curStats = computeStatsForRange(curRange.start, curRange.end);
-  const prevStats = computeStatsForRange(prevRange.start, prevRange.end);
-
-  // Схема: "Поточний" = выбранный месяц, "Минулий" = месяц до него
-  statsState.data = { current: curStats, previous: prevStats };
-  statsState.monthLabels = {
-    current: formatMonthYear(curRange.start),
-    previous: formatMonthYear(prevRange.start)
-  };
-  statsState.slotMapping = { current: "current", previous: "previous" };
-  statsState.activeSlot = "current";
-
-  // UI: подсветка кнопок
-  if (statsMonthCurrentBtn && statsMonthPrevBtn){
-    statsMonthCurrentBtn.classList.add("stats-toggle-btn--active");
-    statsMonthPrevBtn.classList.remove("stats-toggle-btn--active");
-  }
-  renderStatsView();
-}
-
 
   function renderStatsView() {
     if (!statsState.data) {
@@ -1602,11 +1575,6 @@ async function computeStatsForMonthKey_(ym){
       statsSummaryEl.innerHTML = "<p style='color:#6b7280;font-weight:800;'>Немає даних за цей місяць.</p>";
       statsTableEl.innerHTML = "";
       return;
-    }
-
-    // sync month picker value with currently shown month
-    if (statsMonthInput && monthData.range && monthData.range.start) {
-      statsMonthInput.value = monthKey_(monthData.range.start);
     }
 
     const monthLabel = statsState.monthLabels[key] || "";
@@ -1687,22 +1655,6 @@ async function computeStatsForMonthKey_(ym){
     });
   }
 
-  // Month picker (type=month)
-  if (statsMonthInput) {
-    statsMonthInput.addEventListener("change", async () => {
-      const val = String(statsMonthInput.value || "").trim();
-      if (!val) return;
-      await computeStatsForMonthKey_(val);
-    });
-  }
-
-  // Back to auto mode (based on currentDate + "first 10 days" rule)
-  if (statsMonthAutoBtn) {
-    statsMonthAutoBtn.addEventListener("click", async () => {
-      await computeAllStats();
-    });
-  }
-
   statsRoleButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
       const role = btn.getAttribute("data-stats-role");
@@ -1731,7 +1683,20 @@ async function computeStatsForMonthKey_(ym){
     openStatsBtn.addEventListener("click", async () => {
       sectionSchedule.style.display = "none";
       sectionStats.style.display = "block";
-      await computeAllStats();
+
+      // load months needed for stats (currentDate month + previous 2 months)
+      const base = getDayStart(currentDate || new Date());
+      const m0 = monthKey_(base);
+      const m1 = monthKey_(new Date(base.getFullYear(), base.getMonth()-1, 15));
+      const m2 = monthKey_(new Date(base.getFullYear(), base.getMonth()-2, 15));
+
+      showLoader(true, "Завантаження статистики…");
+      try{
+        await ensureMonthsLoaded_([m0,m1,m2]);
+        computeAllStats(base);
+      } finally {
+        showLoader(false);
+      }
     });
 
     closeStatsBtn.addEventListener("click", () => {

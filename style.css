@@ -223,6 +223,27 @@ body {
 }
 .stats-toggle-btn--active { background: #111827; color: #fff; border-color: #111827; }
 
+.stats-toggle-btn--ghost{
+  background:#f9fafb;
+}
+
+/* month picker in stats */
+.stats-label--sub{ opacity:.65; font-weight:800; }
+.stats-month-input{
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 999px;
+  background: #fff;
+  font-weight: 900;
+  color: #111827;
+  outline: none;
+}
+.stats-month-input:focus{
+  box-shadow: 0 0 0 3px rgba(59,130,246,.25);
+  border-color: rgba(59,130,246,.4);
+}
+
 .stats-toggle-pill {
   border-radius: 999px;
   border: 1px solid #e5e7eb;
@@ -1367,27 +1388,4 @@ body {
   color:#7a4a12;
   border:1px solid rgba(122,74,18,.25);
   line-height:1;
-}
-/* ===== Photoshop-style color picker ===== */
-.picker-color-input{
-  width: 44px;
-  height: 36px;
-  padding: 0;
-  border: none;
-  background: none;
-  cursor: pointer;
-}
-
-.picker-color-input:disabled{
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* убираем стандартную рамку */
-.picker-color-input::-webkit-color-swatch-wrapper {
-  padding: 0;
-}
-.picker-color-input::-webkit-color-swatch {
-  border-radius: 10px;
-  border: 2px solid rgba(17,24,39,0.2);
 }
