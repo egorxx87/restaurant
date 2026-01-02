@@ -5,11 +5,13 @@
   <meta name="robots" content="noindex, nofollow">
   <title>Панель керування</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="index.css">
-   <link rel="stylesheet" href="mini_events.css">
+  <link rel="stylesheet" href="mini_events.css">
 </head>
+
 <body>
   <div class="layout">
     <header class="header">
@@ -24,45 +26,40 @@
       <a class="top-nav__btn" href="tasks.html">Завдання</a>
       <a class="top-nav__btn" href="calendar.html">Календар</a>
     </div>
-<!-- MINI EVENTS (Birthdays + Holidays) -->
-<!-- MINI EVENTS (Birthdays + Holidays) -->
-<div class="mini-events mini-events--triple">
 
-  <div class="mini-events__col">
-    <div class="mini-events__header">
-      <div class="mini-events__colTitle">Сьогодні</div>
+    <!-- MINI EVENTS (Birthdays + Holidays) -->
+    <div class="mini-events mini-events--triple">
+      <div class="mini-events__col">
+        <div class="mini-events__header">
+          <div class="mini-events__colTitle">Сьогодні</div>
 
-      <!-- Legend (показываем один раз) -->
-      <div class="mini-events__legend" title="Позначення типів подій">
-        <span class="mini-events__legendItem">
-          <span class="mini-events__dot mini-events__dot--holiday"></span> Свято
-        </span>
-        <span class="mini-events__legendItem">
-          <span class="mini-events__dot mini-events__dot--bday"></span> ДР
-        </span>
+          <div class="mini-events__legend" title="Позначення типів подій">
+            <span class="mini-events__legendItem">
+              <span class="mini-events__dot mini-events__dot--holiday"></span> Свято
+            </span>
+            <span class="mini-events__legendItem">
+              <span class="mini-events__dot mini-events__dot--bday"></span> ДР
+            </span>
+          </div>
+        </div>
+        <div class="mini-events__list" id="miniEventsToday">Завантаження…</div>
+      </div>
+
+      <div class="mini-events__col">
+        <div class="mini-events__header">
+          <div class="mini-events__colTitle">Завтра</div>
+        </div>
+        <div class="mini-events__list" id="miniEventsTomorrow">Завантаження…</div>
+      </div>
+
+      <div class="mini-events__col">
+        <div class="mini-events__header">
+          <div class="mini-events__colTitle">Цього тижня</div>
+        </div>
+        <div class="mini-events__list" id="miniEventsWeek">Завантаження…</div>
       </div>
     </div>
 
-    <div class="mini-events__list" id="miniEventsToday">Завантаження…</div>
-  </div>
-
-  <div class="mini-events__col">
-    <div class="mini-events__header">
-      <div class="mini-events__colTitle">Завтра</div>
-    </div>
-
-    <div class="mini-events__list" id="miniEventsTomorrow">Завантаження…</div>
-  </div>
-
-  <div class="mini-events__col">
-    <div class="mini-events__header">
-      <div class="mini-events__colTitle">Цього тижня</div>
-    </div>
-
-    <div class="mini-events__list" id="miniEventsWeek">Завантаження…</div>
-  </div>
-
-</div>
     <main>
       <div class="dashboard-grid">
 
@@ -74,38 +71,35 @@
 
           <div class="module-content">
             <div class="split-two">
-
-              <!-- СЬОГОДНІ -->
               <div class="mini-card">
                 <div class="mini-title">Сьогодні</div>
                 <div class="mini-list" id="duty-admin-today">—</div>
               </div>
 
-              <!-- ЗАВТРА -->
               <div class="mini-card">
                 <div class="mini-title">Завтра</div>
                 <div class="mini-list" id="duty-admin-tomorrow">—</div>
               </div>
-
             </div>
-<!-- Графік під адміном (щоб не було пустого місця) -->
-<div class="module-divider"></div>
-<div class="subheader">
-  <h3 class="subheader__title">Графік</h3>
-  <a class="subheader__link" href="schedule.html?mode=day">Відкрити</a>
-</div>
 
-<div class="split-two">
-  <a class="mini-card" href="schedule.html?mode=day&day=today">
-    <div class="mini-title">Сьогодні</div>
-    <div class="mini-list" id="schedule-today">—</div>
-  </a>
+            <div class="module-divider"></div>
+            <div class="subheader">
+              <h3 class="subheader__title">Графік</h3>
+              <a class="subheader__link" href="schedule.html?mode=day">Відкрити</a>
+            </div>
 
-  <a class="mini-card" href="schedule.html?mode=day&day=tomorrow">
-    <div class="mini-title">Завтра</div>
-    <div class="mini-list" id="schedule-tomorrow">—</div>
-  </a>
-</div>
+            <div class="split-two">
+              <a class="mini-card" href="schedule.html?mode=day&day=today">
+                <div class="mini-title">Сьогодні</div>
+                <div class="mini-list" id="schedule-today">—</div>
+              </a>
+
+              <a class="mini-card" href="schedule.html?mode=day&day=tomorrow">
+                <div class="mini-title">Завтра</div>
+                <div class="mini-list" id="schedule-tomorrow">—</div>
+              </a>
+            </div>
+
             <div class="module-note">
               <em>Інформація завантажується…</em>
             </div>
@@ -139,22 +133,7 @@
           </div>
         </div>
 
-        <!-- Графік -->
-
-        <!-- Завдання -->
-        <div class="dashboard-module module-tasks">
-          <div class="module-header">
-            <h2 class="module-title">Вхідні завдання</h2>
-            <a class="module-btn" href="tasks.html">+ Додати</a>
-          </div>
-          <div class="module-content">
-            <div class="task-list" id="tasks-mini-list">
-              <div class="task-empty" id="tasks-mini-empty">Завантаження…</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Події -->
+        <!-- Найближчі події (ЛІВО знизу) -->
         <div class="dashboard-module">
           <div class="module-header">
             <h2 class="module-title">Найближчі події</h2>
@@ -162,17 +141,44 @@
           </div>
 
           <div class="module-content">
-            <div class="events-toolbar">
-              <button class="btn btn-ev btn--active" data-range="today" type="button">Сьогодні</button>
-              <button class="btn btn-ev" data-range="tomorrow" type="button">Завтра</button>
-              <button class="btn btn-ev" data-range="week" type="button">Цього тижня</button>
-            </div>
+            <div class="mini-events mini-events--triple mini-events--in-module">
+              <div class="mini-events__col">
+                <div class="mini-events__header">
+                  <div class="mini-events__colTitle">Сьогодні</div>
+                </div>
+                <div class="mini-events__list" id="homeEventsToday">Завантаження…</div>
+              </div>
 
-            <div id="eventsList" class="events-list">Завантаження…</div>
+              <div class="mini-events__col">
+                <div class="mini-events__header">
+                  <div class="mini-events__colTitle">Завтра</div>
+                </div>
+                <div class="mini-events__list" id="homeEventsTomorrow">Завантаження…</div>
+              </div>
+
+              <div class="mini-events__col">
+                <div class="mini-events__header">
+                  <div class="mini-events__colTitle">Цього тижня</div>
+                </div>
+                <div class="mini-events__list" id="homeEventsWeek">Завантаження…</div>
+              </div>
+            </div>
           </div>
         </div>
-        <!-- Швидкі дії -->
-        
+
+        <!-- Завдання (ПРАВО знизу) -->
+        <div class="dashboard-module module-tasks">
+          <div class="module-header">
+            <h2 class="module-title">Вхідні завдання</h2>
+            <a class="module-btn" href="tasks.html">+ Додати</a>
+          </div>
+
+          <div class="module-content">
+            <div class="task-list" id="tasks-mini-list">
+              <div class="task-empty" id="tasks-mini-empty">Завантаження…</div>
+            </div>
+          </div>
+        </div>
 
       </div>
     </main>
@@ -185,6 +191,5 @@
 
   <script src="index.js"></script>
   <script src="mini_events.js"></script>
- 
 </body>
 </html>

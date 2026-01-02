@@ -234,3 +234,67 @@
   .ta-badge__icon{ width: 16px; height: 16px; font-size: 11px; }
   .ta-rank{ display:none; } /* чтобы не раздувало на мобиле */
 }
+/* FIX: не ломаем слова по буквам */
+.mini-event__title{
+  min-width: 0;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: break-word; /* переносим только если реально не влазит */
+}
+
+/* =========================================================
+   OVERRIDES for "Найближчі події" module (mini-events--in-module)
+   - Make rows full width like the top Holidays block
+   - Keep titles on one line with ellipsis
+   ========================================================= */
+
+.mini-events--in-module .mini-events__list{
+  align-items: stretch;
+}
+
+.mini-events--in-module .mini-event{
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+}
+
+.mini-events--in-module .mini-event__title{
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.mini-events--in-module .mini-event__time{
+  white-space: nowrap;
+}
+/* =====================================================
+   FIX: "Найближчі події" — на всю ширину как праздники
+   ===================================================== */
+
+/* внутри dashboard-модуля делаем ОДНУ колонку */
+.mini-events--in-module.mini-events--triple{
+  grid-template-columns: 1fr !important;
+}
+
+/* колонка растягивается */
+.mini-events--in-module .mini-events__col{
+  width: 100%;
+}
+
+/* сами события — на всю ширину */
+.mini-events--in-module .mini-event{
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* текст в одну строку */
+.mini-events--in-module .mini-event__title{
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

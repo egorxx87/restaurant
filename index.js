@@ -498,30 +498,165 @@ async function loadTasksMini(){
 }
 
 /* =========================
-   HOME EVENTS (Today / Tomorrow / Week)
+   HOME EVENTS (Today / Tomorrow / Next7)
+   - Renders into #homeEventsToday / #homeEventsTomorrow / #homeEventsWeek
+   - Uses the SAME markup/classes as mini_events ("mini-event")
+   - Backend range: today | tomorrow | next7
 ========================= */
 
 function initHomeEvents(){
+  const t  = document.getElementById("homeEventsToday");
+  const tm = document.getElementById("homeEventsTomorrow");
+  const w  = document.getElementById("homeEventsWeek");
+
+  // ✅ New layout (3 columns inside module)
+  if (t && tm && w){
+    loadHomeEventsTriple_();
+    return;
+  }
+
+  // 🧯 Old layout (tabs + #eventsList) — keep only if it still exists somewhere
   const buttons = document.querySelectorAll(".btn-ev");
   if (!buttons.length) return;
 
   buttons.forEach(b => b.addEventListener("click", () => {
     buttons.forEach(x => x.classList.remove("btn--active"));
     b.classList.add("btn--active");
-    loadHomeEvents(b.dataset.range);
+    loadHomeEventsLegacy_(b.dataset.range || "today");
 
-    // ⬅️ обновляем бейджи при переключении
+    // обновляем бейджи при переключении (если нужно)
     initHomeHolidayBadges_();
   }));
 
-  loadHomeEvents("today");
-
-  // ⬅️ первый запуск бейджей "Свято"
+  loadHomeEventsLegacy_("today");
   initHomeHolidayBadges_();
 }
 
+async function loadHomeEventsTriple_(){
+  const boxToday = document.getElementById("homeEventsToday");
+  const boxTomorrow = document.getElementById("homeEventsTomorrow");
+  const boxWeek = document.getElementById("homeEventsWeek");
+  if (!boxToday || !boxTomorrow || !boxWeek) return;
 
-async function loadHomeEvents(range){
+  boxToday.textContent = "Завантаження…";
+  boxTomorrow.textContent = "Завантаження…";
+  boxWeek.textContent = "Завантаження…";
+
+  try{
+    const [todayEvents, tomorrowEvents, next7Events] = await Promise.all([
+      fetchHomeEvents_("today"),
+      fetchHomeEvents_("tomorrow"),
+      fetchHomeEvents_("next7"),
+    ]);
+
+    // Сьогодні / Завтра
+    renderHomeEventsList_(todayEvents, "homeEventsToday", 6, true);
+    renderHomeEventsList_(tomorrowEvents, "homeEventsTomorrow", 6, true);
+
+    // next7 — без дублей today/tomorrow (на всякий)
+    const shown = new Set();
+    (todayEvents || []).forEach(e => shown.add(homeDedupKey_(e)));
+    (tomorrowEvents || []).forEach(e => shown.add(homeDedupKey_(e)));
+
+    const filteredNext7 = (next7Events || []).filter(e => e && !shown.has(homeDedupKey_(e)));
+    renderHomeEventsList_(filteredNext7, "homeEventsWeek", 10, false);
+
+  } catch(e){
+    console.error(e);
+    boxToday.innerHTML = `<div class="mini-events__empty">Помилка завантаження</div>`;
+    boxTomorrow.innerHTML = `<div class="mini-events__empty">Помилка завантаження</div>`;
+    boxWeek.innerHTML = `<div class="mini-events__empty">Помилка завантаження</div>`;
+  }
+}
+
+async function fetchHomeEvents_(range){
+  const res = await fetch(CALENDAR_API_URL + `?_=${Date.now()}`, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({ action: "gcal_events", range })
+  });
+
+  const json = await res.json();
+  if (!json || !json.ok) throw new Error((json && json.error) ? json.error : "Помилка календаря");
+  return Array.isArray(json.events) ? json.events : [];
+}
+
+function renderHomeEventsList_(events, elementId, limit, compactForDay){
+  const box = document.getElementById(elementId);
+  if (!box) return;
+
+  const arr = Array.isArray(events) ? events : [];
+  if (!arr.length){
+    box.innerHTML = `<div class="mini-events__empty">Немає подій</div>`;
+    return;
+  }
+
+  const top = arr.slice(0, limit);
+  const more = arr.length - top.length;
+
+  box.innerHTML =
+    top.map(e => renderHomeEventItem_(e, compactForDay)).join("") +
+    (more > 0 ? `<div class="mini-events__more">+ ще ${more}…</div>` : "");
+}
+
+function renderHomeEventItem_(e, compactForDay){
+  const title = escapeHtml(e?.summary || "(без назви)");
+  const time  = compactForDay ? formatHomePrefixCompact_(e) : formatHomePrefixFull_(e);
+
+  return `
+    <div class="mini-event">
+      <div class="mini-event__time">${escapeHtml(time)}</div>
+      <div class="mini-event__title">${title}</div>
+    </div>
+  `;
+}
+
+// dedup key: local day + cleaned title
+function homeDedupKey_(e){
+  const title = String(e?.summary || "")
+    .replace(/\s+/g," ")
+    .trim()
+    .toLowerCase();
+
+  let day = "";
+  if (e && e.start){
+    const d = new Date(e.start);
+    if (!isNaN(d)) day = isoLocal_(d); // helper below
+  }
+  return `${day}|${title}`;
+}
+
+function formatHomePrefixCompact_(e){
+  if (!e || !e.start) return "";
+  if (e.allDay) return "весь день";
+
+  const d = new Date(e.start);
+  if (isNaN(d)) return "";
+  const hh = String(d.getHours()).padStart(2,"0");
+  const mi = String(d.getMinutes()).padStart(2,"0");
+  return `${hh}:${mi}`;
+}
+
+function formatHomePrefixFull_(e){
+  if (!e || !e.start) return "";
+  const d = new Date(e.start);
+  if (isNaN(d)) return "";
+
+  const wdArr = ["Нд","Пн","Вт","Ср","Чт","Пт","Сб"];
+  const wd = wdArr[d.getDay()] || "";
+  const dd = String(d.getDate()).padStart(2,"0");
+  const mm = String(d.getMonth()+1).padStart(2,"0");
+
+  if (e.allDay) return `${wd} ${dd}.${mm}`;
+
+  const hh = String(d.getHours()).padStart(2,"0");
+  const mi = String(d.getMinutes()).padStart(2,"0");
+  return `${wd} ${dd}.${mm} ${hh}:${mi}`;
+}
+
+/* ----- legacy (old #eventsList layout) ----- */
+
+async function loadHomeEventsLegacy_(range){
   const list = document.getElementById("eventsList");
   if (!list) return;
 
@@ -578,6 +713,7 @@ function formatEventTime_(e){
   const mi = String(d.getMinutes()).padStart(2,"0");
   return `${dd}.${mm} ${hh}:${mi}`;
 }
+
 
 /* =========================
    Helpers
