@@ -1368,3 +1368,26 @@ body {
   border:1px solid rgba(122,74,18,.25);
   line-height:1;
 }
+/* ===== Photoshop-style color picker ===== */
+.picker-color-input{
+  width: 44px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.picker-color-input:disabled{
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* убираем стандартную рамку */
+.picker-color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.picker-color-input::-webkit-color-swatch {
+  border-radius: 10px;
+  border: 2px solid rgba(17,24,39,0.2);
+}

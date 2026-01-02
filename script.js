@@ -1233,66 +1233,99 @@ function renderWeekRoleTimeline(roleKey) {
   // Picker UI
   // ==============================
   function renderColorPaletteUI_(currentName) {
-    const wrap = document.createElement("div");
-    wrap.style.width = "100%";
-    wrap.style.marginBottom = "10px";
+  const wrap = document.createElement("div");
+  wrap.className = "picker-color-wrap";
+  wrap.style.width = "100%";
+  wrap.style.marginBottom = "10px";
 
-    const title = document.createElement("div");
-    title.style.fontWeight = "900";
-    title.style.marginBottom = "6px";
-    title.textContent = currentName
-      ? `🎨 Колір для: ${currentName}`
-      : "🎨 Колір: виберіть ім'я";
+  const title = document.createElement("div");
+  title.style.fontWeight = "900";
+  title.style.marginBottom = "6px";
+  title.textContent = currentName
+    ? `🎨 Колір для: ${currentName}`
+    : "🎨 Колір: виберіть ім'я";
 
-    const grid = document.createElement("div");
-    grid.style.display = "flex";
-    grid.style.flexWrap = "wrap";
-    grid.style.gap = "8px";
+  const grid = document.createElement("div");
+  grid.className = "picker-color-grid";
+  grid.style.display = "flex";
+  grid.style.flexWrap = "wrap";
+  grid.style.gap = "8px";
 
-    const makeSwatch = (hex) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.title = hex;
-      b.style.width = "28px";
-      b.style.height = "28px";
-      b.style.borderRadius = "10px";
-      b.style.border = "2px solid rgba(17,24,39,0.15)";
-      b.style.background = hex;
-      b.style.cursor = currentName ? "pointer" : "not-allowed";
-      b.style.opacity = currentName ? "1" : "0.35";
+  const makeSwatch = (hex) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "picker-swatch";
+    b.title = hex;
 
-      b.addEventListener("click", async () => {
-        if (!currentName) return;
-        await saveNameColor(currentName, hex);
-        renderForCurrentPeriod();
-      });
-      return b;
-    };
+    b.style.width = "28px";
+    b.style.height = "28px";
+    b.style.borderRadius = "10px";
+    b.style.border = "2px solid rgba(17,24,39,0.15)";
+    b.style.background = hex;
 
-    COLOR_PRESETS.forEach(hex => grid.appendChild(makeSwatch(hex)));
+    // если имя не выбрано — отключаем
+    b.disabled = !currentName;
+    b.style.cursor = currentName ? "pointer" : "not-allowed";
+    b.style.opacity = currentName ? "1" : "0.35";
 
-    const customBtn = document.createElement("button");
-    customBtn.type = "button";
-    customBtn.className = "picker-option-btn";
-    customBtn.textContent = "Свой цвет…";
-    customBtn.disabled = !currentName;
-    customBtn.style.marginLeft = "auto";
-
-    customBtn.addEventListener("click", async () => {
+    b.addEventListener("click", async () => {
       if (!currentName) return;
-      const cur = NAME_COLORS[currentName] || "#34d399";
-      const hex = prompt(`HEX колір для "${currentName}"`, cur);
-      if (!hex) return;
-      await saveNameColor(currentName, hex.trim());
+      await saveNameColor(currentName, hex);
       renderForCurrentPeriod();
     });
 
-    wrap.appendChild(title);
-    wrap.appendChild(grid);
-    wrap.appendChild(customBtn);
+    return b;
+  };
 
-    pickerOptionsEl.prepend(wrap);
-  }
+  // пресеты
+  COLOR_PRESETS.forEach((hex) => grid.appendChild(makeSwatch(hex)));
+
+  // ===== Photoshop-style color picker (native) =====
+  const colorRow = document.createElement("div");
+  colorRow.className = "picker-color-row";
+  colorRow.style.marginTop = "10px";
+  colorRow.style.display = "flex";
+  colorRow.style.alignItems = "center";
+  colorRow.style.gap = "10px";
+
+  const colorLabel = document.createElement("span");
+  colorLabel.textContent = "🎨 Вибрати будь-який колір:";
+  colorLabel.style.fontWeight = "800";
+  colorLabel.style.fontSize = "0.85rem";
+  colorLabel.style.opacity = currentName ? "1" : "0.55";
+
+  const colorInput = document.createElement("input");
+  colorInput.type = "color";
+  colorInput.className = "picker-color-input";
+  colorInput.disabled = !currentName;
+  colorInput.value = (currentName && NAME_COLORS[currentName]) ? NAME_COLORS[currentName] : "#34d399";
+
+  // input — обновляется сразу при движении в палитре
+  colorInput.addEventListener("input", async (e) => {
+    if (!currentName) return;
+    const hex = String(e.target.value || "").trim();
+    await saveNameColor(currentName, hex);
+    renderForCurrentPeriod();
+  });
+
+  // change — на всякий случай (некоторые браузеры триггерят только change)
+  colorInput.addEventListener("change", async (e) => {
+    if (!currentName) return;
+    const hex = String(e.target.value || "").trim();
+    await saveNameColor(currentName, hex);
+    renderForCurrentPeriod();
+  });
+
+  colorRow.appendChild(colorLabel);
+  colorRow.appendChild(colorInput);
+
+  wrap.appendChild(title);
+  wrap.appendChild(grid);
+  wrap.appendChild(colorRow);
+
+  // вставляем палитру в начало модалки
+  pickerOptionsEl.prepend(wrap);
+}
 
   function openPicker(targetEl, row, role, slot) {
     _scrollAnchorISO = captureAnchorFromEl_(targetEl);
