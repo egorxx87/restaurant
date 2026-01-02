@@ -17,6 +17,12 @@ const tabToday    = document.getElementById("tab-today");
 const tabTomorrow = document.getElementById("tab-tomorrow");
 const tabWeek     = document.getElementById("tab-week");
 const tabMonth    = document.getElementById("tab-month");
+// ✅ НОВОЕ
+const tabAll      = document.getElementById("tab-all");
+
+const dateWrap    = document.getElementById("res-date-wrap");
+const dateInput   = document.getElementById("res-date-input");
+const dateClear   = document.getElementById("res-date-clear");
 
 const btnAdd = document.getElementById("res-add");
 const nConfirmed = document.getElementById("new-confirmed");
@@ -53,6 +59,7 @@ const eNote = document.getElementById("edit-note");
 let cache = [];
 let mode = "today";
 let editRowId = null;
+let pickedDateISO = ""; // YYYY-MM-DD
 
 /* ================== INIT ================== */
 init();
@@ -62,6 +69,24 @@ function init(){
   tabTomorrow?.addEventListener("click", ()=> setMode("tomorrow", tabTomorrow));
   tabWeek?.addEventListener("click", ()=> setMode("week", tabWeek));
   tabMonth?.addEventListener("click", ()=> setMode("month", tabMonth));
+  tabAll?.addEventListener("click", ()=> setMode("all", tabAll));
+
+  // ✅ Дата всегда видна → кнопки tabDate больше нет
+  // При выборе даты включаем режим "date" и перерисовываем
+  dateInput?.addEventListener("change", ()=>{
+    pickedDateISO = String(dateInput.value || "").trim();
+    if(pickedDateISO){
+      // setMode вызовет render()
+      setMode("date", null);
+    }
+  });
+
+  // ✅ "Скинути" → очистить дату и вернуть "Сьогодні"
+  dateClear?.addEventListener("click", ()=>{
+    pickedDateISO = "";
+    if(dateInput) dateInput.value = "";
+    setMode("today", tabToday);
+  });
 
   btnAdd?.addEventListener("click", addManual);
 
@@ -74,6 +99,12 @@ function init(){
   mCancel?.addEventListener("click", closeModal);
   modal?.querySelector(".res-modal__backdrop")?.addEventListener("click", closeModal);
 
+  // ✅ если даты ещё нет — поставим сегодня (чтобы сразу видно было дату)
+  if(dateInput && !dateInput.value){
+    pickedDateISO = toISODate_(new Date());
+    dateInput.value = pickedDateISO;
+  }
+
   setMode("today", tabToday);
   fetchAll();
 }
@@ -81,10 +112,15 @@ function init(){
 /* ================== MODE ================== */
 function setMode(m, btn){
   mode = m;
-  [tabToday, tabTomorrow, tabWeek, tabMonth].forEach(b=>b?.classList.remove("is-active"));
-  btn?.classList.add("is-active");
+  [tabToday, tabTomorrow, tabWeek, tabMonth, tabAll]
+  .forEach(b=>b?.classList.remove("is-active"));
+
+  // показываем/скрываем блок выбора даты
+
   render();
 }
+
+
 
 /* ================== LOAD ================== */
 async function fetchAll(){
@@ -171,9 +207,12 @@ function fixManualFields_(x){
 
 /* ================== FILTER RULES ================== */
 /**
- * - Не показываем прошлые дни (вчера и раньше)
- * - Не показываем записи без корректной даты dd.mm.yyyy
- * - Не показываем без времени HH:MM (all-day / multi-day)
+ * Нормализация:
+ * - оставляем только записи с корректной датой dd.mm.yyyy
+ * - и временем HH:MM
+ *
+ * Важно: фильтр "от сегодня" делаем в render() по режимам.
+ * Для режима "Дата" можно смотреть любой выбранный день.
  */
 function normalizeAndKeep(x){
   // ✅ сначала чинить manual поля
@@ -187,11 +226,6 @@ function normalizeAndKeep(x){
 
   const dt = toDateTime(date, time);
   if(!dt) return null;
-
-  // только сегодня и будущее (без вчера)
-  const startToday = new Date();
-  startToday.setHours(0,0,0,0);
-  if(dt < startToday) return null;
 
   return { ...x, _dt: dt };
 }
@@ -218,17 +252,60 @@ function rangeForMode(){
   return { start, end };
 }
 
+function rangeForAll_(){
+  const start = new Date();
+  start.setHours(0,0,0,0);
+  const end = new Date(start);
+  // «всі від сьогодні» — покажем на 12 месяцев вперёд
+  end.setDate(end.getDate() + 365);
+  end.setHours(23,59,59,999);
+  return { start, end };
+}
+
+function rangeForPickedDate_(){
+  // pickedDateISO: YYYY-MM-DD
+  if(!pickedDateISO){
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const e = new Date(today);
+    e.setHours(23,59,59,999);
+    return { start: today, end: e };
+  }
+  const m = String(pickedDateISO).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m){
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const e = new Date(today);
+    e.setHours(23,59,59,999);
+    return { start: today, end: e };
+  }
+  const y = Number(m[1]);
+  const mo = Number(m[2]) - 1;
+  const d = Number(m[3]);
+  const start = new Date(y, mo, d, 0, 0, 0, 0);
+  const end = new Date(y, mo, d, 23, 59, 59, 999);
+  return { start, end };
+}
+
 /* ================== RENDER ================== */
 function render(){
   if(!elDays) return;
 
-  const { start, end } = rangeForMode();
+  const { start, end } =
+    (mode === "all")  ? rangeForAll_() :
+    (mode === "date") ? rangeForPickedDate_() :
+    rangeForMode();
+
+  const startToday = new Date();
+  startToday.setHours(0,0,0,0);
 
   // normalize + filter
   const rows = cache
     .map(normalizeAndKeep)
     .filter(Boolean)
     .filter(x => x._dt >= start && x._dt <= end)
+    // ✅ по всем режимам КРОМЕ "date" скрываем прошлые даты
+    .filter(x => mode === "date" ? true : (x._dt >= startToday))
     .sort((a,b)=> a._dt - b._dt);
 
   // group by day
@@ -249,7 +326,12 @@ function render(){
     mode==="tomorrow" ? "Завтра" :
     mode==="week" ? "Тиждень" : "Місяць";
 
-  elStatus.textContent = `${label}: ${active.length} (ручн. ${manual} / Quandoo ${quandoo})`;
+  const label2 =
+    mode==="all" ? "Всі" :
+    mode==="date" ? `Дата: ${pickedDateISO ? isoToDDMMYYYY_(pickedDateISO) : ddmmyyyyFromDate(new Date())}` :
+    label;
+
+  elStatus.textContent = `${label2}: ${active.length} (ручн. ${manual} / Quandoo ${quandoo})`;
 
   // render days
   elDays.innerHTML = "";
@@ -622,7 +704,7 @@ function setLoading(on, text="Завантаження…"){
   loaderTextEl.textContent = text;
   loaderEl.classList.toggle("global-loader--hidden", !on);
   // чтобы не тыкали 100 раз
-  [tabToday,tabTomorrow,tabWeek,tabMonth,btnAdd,mSave].forEach(b=>{ if(b) b.disabled = on; });
+  [tabToday,tabTomorrow,tabWeek,tabMonth,tabAll,btnAdd,mSave,dateClear].forEach(b=>{ if(b) b.disabled = on; });
 }
 
 function setError(msg){
@@ -650,3 +732,17 @@ function setVhUnit(){
 setVhUnit();
 window.addEventListener('resize', setVhUnit);
 window.addEventListener('orientationchange', setVhUnit);
+
+/* ===== small helpers for date picker ===== */
+function toISODate_(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+function isoToDDMMYYYY_(iso){
+  const m = String(iso||"").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m) return String(iso||"");
+  return `${m[3]}.${m[2]}.${m[1]}`;
+}

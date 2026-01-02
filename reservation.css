@@ -1,6 +1,29 @@
 /* ===== base ===== */
 .res-toolbar{ display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
+.res-toolbar__row{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
 .res-tabs{ display:flex; gap:8px; flex-wrap:wrap; }
+
+/* date picker (native calendar) */
+.res-date{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.res-date__label{
+  font-size:12px;
+  font-weight:700;
+  color:#6b7280;
+}
+.res-date__input{
+  border:1px solid #e5e7eb;
+  border-radius:999px;
+  padding:7px 10px;
+  font-size:13px;
+  font-weight:600;
+  background:#fff;
+}
+.res-date__input:focus{ box-shadow:0 0 0 3px rgba(59,130,246,.12); outline:none; }
 .res-tab{
   border:1px solid #e5e7eb;
   background:#fff;
@@ -288,6 +311,9 @@ body.res-modal-open{
   .res-item{ align-items:flex-start; }
   .res-item__left{ align-items:flex-start; flex-direction:column; gap:4px; }
   .res-item__name{ max-width:78vw; }
+  .res-toolbar__row{ align-items:flex-start; }
+  .res-date{ width:100%; }
+  .res-date__input{ width:100%; border-radius:12px; }
   .res-new__grid{ grid-template-columns:1fr; }
   .span-2{ grid-column:span 1; }
 }
@@ -321,4 +347,40 @@ body.res-modal-open{
   background: rgba(16,185,129,.12);
   border-color: rgba(16,185,129,.28);
   color: rgba(6,95,70,.98);
+}
+.res-date--inline{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:nowrap;
+}
+
+.res-date__label{
+  color:#6b7280;
+  font-weight:700;
+  white-space:nowrap;
+}
+
+.res-date__input{
+  height:40px;
+  border-radius:999px;
+  border:1px solid #e5e7eb;
+  padding:0 14px;
+  font-weight:800;
+}
+
+@media (max-width: 520px){
+  .res-toolbar__row{
+    flex-direction:column;
+    align-items:stretch;
+    gap:10px;
+  }
+  .res-date--inline{
+    justify-content:space-between;
+    width:100%;
+  }
+  .res-date__input{
+    width:100%;
+    max-width: 230px;
+  }
 }

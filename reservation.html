@@ -27,18 +27,28 @@
       <div class="card">
 
         <div class="res-toolbar">
-          <div class="res-tabs" role="tablist" aria-label="Фільтри">
-            <button id="tab-today"   class="res-tab is-active" type="button">Сьогодні</button>
-            <button id="tab-tomorrow" class="res-tab" type="button">Завтра</button>
-            <button id="tab-week"    class="res-tab" type="button">Тиждень</button>
-            <button id="tab-month"   class="res-tab" type="button">Місяць</button>
-          </div>
+  <div class="res-toolbar__row">
+    <div class="res-tabs" role="tablist" aria-label="Фільтри">
+      <button id="tab-today"    class="res-tab is-active" type="button">Сьогодні</button>
+      <button id="tab-tomorrow" class="res-tab" type="button">Завтра</button>
+      <button id="tab-week"     class="res-tab" type="button">Тиждень</button>
+      <button id="tab-month"    class="res-tab" type="button">Місяць</button>
+      <button id="tab-all"      class="res-tab" type="button">Всі</button>
+    </div>
 
-          <div class="res-status">
-            <span id="res-status-text">Завантаження…</span>
-            <span id="res-error-text" class="res-error" style="display:none;"></span>
-          </div>
-        </div>
+    <!-- ✅ дата всегда видна -->
+    <div class="res-date res-date--inline" id="res-date-wrap">
+      <span class="res-date__label">Обрати дату</span>
+      <input id="res-date-input" class="res-date__input" type="date" />
+      <button id="res-date-clear" class="res-btn" type="button">Скинути</button>
+    </div>
+  </div>
+
+  <div class="res-status">
+    <span id="res-status-text">Завантаження…</span>
+    <span id="res-error-text" class="res-error" style="display:none;"></span>
+  </div>
+</div>
 
         <div class="res-board">
           <!-- timeline line "now" вставляется сюда -->
@@ -74,10 +84,12 @@
               <span>К-ть</span>
               <input id="new-guests" class="res-field" placeholder="2">
             </label>
-<label class="res-f span-2">
-  <span>Місце / Стіл</span>
-  <input id="new-table" class="res-field" placeholder="Stuberl">
-</label>
+
+            <label class="res-f span-2">
+              <span>Місце / Стіл</span>
+              <input id="new-table" class="res-field" placeholder="Stuberl">
+            </label>
+
             <label class="res-f span-2">
               <span>Від кого</span>
               <input id="new-from" class="res-field" placeholder="Імʼя Прізвище">
@@ -138,10 +150,12 @@
             <span>К-ть</span>
             <input id="edit-guests" class="res-field" placeholder="2">
           </label>
-<label class="res-f span-2">
-  <span>Місце / Стіл</span>
-  <input id="edit-table" class="res-field">
-</label>
+
+          <label class="res-f span-2">
+            <span>Місце / Стіл</span>
+            <input id="edit-table" class="res-field">
+          </label>
+
           <label class="res-f span-2">
             <span>Від кого</span>
             <input id="edit-from" class="res-field">
