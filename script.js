@@ -691,118 +691,174 @@ function applyHolidayUI_() {
     const arr = obj[role] || [];
     return String(arr?.[slot] || "").trim();
   }
+function normalizeRoleLanes_(rows, roles){
+  const out = rows.map(r => ({
+    ...r,
+    admin: (r.admin || []).slice(),
+    kellner: (r.kellner || []).slice(),
+    kueche: (r.kueche || []).slice(),
+    reinigung: (r.reinigung || []).slice(),
+  }));
 
-  function renderDayGridCells(dayRows, targetEl = scheduleContentEl, roleFilter = "all") {
-    const rows = dayRows.slice().sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+  for (const role of roles){
+    const lanes = Array(role.cols).fill("");
 
-    if (!rows.length) {
-      targetEl.innerHTML = "<p style='font-size:0.9rem;color:#6b7280;font-weight:700;'>На цей день немає змін.</p>";
-      return;
+    for (let i = 0; i < out.length; i++){
+      const arr = (out[i][role.key] || []).map(x => String(x || "").trim());
+
+      // убрать пустые + дубли (сохраняя порядок)
+      const seen = new Set();
+      const names = [];
+      for (const n of arr){
+        if (!n) continue;
+        if (seen.has(n)) continue;
+        seen.add(n);
+        names.push(n);
+      }
+
+      const next = Array(role.cols).fill("");
+      const remaining = names.slice();
+
+      // 1) закрепляем имена в тех же слотах, если они продолжаются
+      for (let s = 0; s < role.cols; s++){
+        const prevName = lanes[s];
+        if (!prevName) continue;
+        const idx = remaining.indexOf(prevName);
+        if (idx !== -1){
+          next[s] = prevName;
+          remaining.splice(idx, 1);
+        }
+      }
+
+      // 2) остальное раскладываем слева направо по свободным слотам
+      for (let s = 0; s < role.cols; s++){
+        if (next[s]) continue;
+        if (!remaining.length) break;
+        next[s] = remaining.shift();
+      }
+
+      for (let s = 0; s < role.cols; s++) lanes[s] = next[s];
+      out[i][role.key] = next;
     }
-
-    const ALL_ROLES = [
-      { key: "admin", title: "Admin", cols: 3 },
-      { key: "kellner", title: "Kellner", cols: 4 },
-      { key: "kueche", title: "Küche", cols: 4 },
-      { key: "reinigung", title: "Reinigung", cols: 2 },
-    ];
-
-    const roles = (roleFilter && roleFilter !== "all")
-      ? ALL_ROLES.filter(r => r.key === roleFilter)
-      : ALL_ROLES;
-
-    const withSeps = roles.length > 1;
-
-    let gridCols = `70px `;
-    roles.forEach((r, idx) => {
-      gridCols += `repeat(${r.cols}, minmax(46px, 1fr)) `;
-      if (withSeps && idx !== roles.length - 1) gridCols += `10px `;
-    });
-
-    let html = `<div class="day-compact"><div class="day-grid" style="grid-template-columns:${gridCols.trim()};">`;
-
-    // header
-    html += `<div class="day-head day-head--time">Zeit</div>`;
-    roles.forEach((r, idx) => {
-      html += `<div class="day-head day-head--role" style="grid-column: span ${r.cols};">${r.title}</div>`;
-      if (withSeps && idx !== roles.length - 1) html += `<div class="day-head day-sep day-sep--head"></div>`;
-    });
-
-    rows.forEach((r, i) => {
-      const gridRow = i + 2;
-      const isShiftStartLine = (r.time || "").trim() === "16:00";
-      const shiftCls = isShiftStartLine ? " day-row--shiftstart" : "";
-
-      html += `<div class="day-time${shiftCls}" style="grid-row:${gridRow};grid-column:1;">${r.time || ""}</div>`;
-
-      let col = 2;
-
-      roles.forEach((role, ridx) => {
-        for (let slot = 0; slot < role.cols; slot++) {
-          const name = (r[role.key]?.[slot] || "").trim();
-          const prev = i > 0 ? (rows[i - 1][role.key]?.[slot] || "").trim() : "";
-          const next = i < rows.length - 1 ? (rows[i + 1][role.key]?.[slot] || "").trim() : "";
-
-          const isStart = !!name && name !== prev;
-          let isEnd = !!name && name !== next;
-
-          if (name && !isStart) { col++; continue; }
-
-          const styleStr = name ? getPillStyleForName(name) : "";
-          const label = isStart ? name : "";
-
-          let blockSpan = 1;
-          let timeText = "";
-          let addOverlay = false;
-          let hideOverlay = false;
-
-          if (name && isStart) {
-            let e = i;
-            while (e < rows.length - 1 && String(rows[e + 1][role.key]?.[slot] || "").trim() === name) e++;
-            blockSpan = e - i + 1;
-
-            if (blockSpan > 1) isEnd = true;
-
-            if (blockSpan > 1) {
-              timeText = `${timePretty_(rows[i].time)}–${timePretty_(rows[e].time)}`;
-              addOverlay = true;
-              hideOverlay = blockSpan <= 2;
-            }
-          }
-
-          const rowsListAttr = (name && isStart && blockSpan > 1)
-            ? ` data-rows="${rows.slice(i, i + blockSpan).map(x => x.row).join(',')}"`
-            : "";
-
-          html += `
-            <div class="day-cell${shiftCls} ${name ? "day-cell--filled" : "day-cell--empty"} ${isStart ? "day-cell--start" : ""} ${isEnd ? "day-cell--end" : ""}"
-                 style="grid-row:${gridRow}${name && isStart ? ` / span ${blockSpan}` : ""};grid-column:${col};${styleStr}"
-                 data-row="${r.row}"
-                 ${rowsListAttr}
-                 data-role="${role.key}"
-                 data-slot="${slot}">
-              <span class="day-cell__label" title="${name}" data-full="${name}">${label}</span>
-              ${addOverlay ? `
-                <span class="block-time-overlay" data-len="${blockSpan}" ${hideOverlay ? 'data-hide="1"' : ""}>
-                  <span class="block-time-vert">${timeText}</span>
-                </span>
-              ` : ""}
-            </div>
-          `;
-          col++;
-        }
-
-        if (withSeps && ridx !== roles.length - 1) {
-          html += `<div class="day-sep${shiftCls}" style="grid-row:${gridRow};grid-column:${col};"></div>`;
-          col++;
-        }
-      });
-    });
-
-    html += `</div></div>`;
-    targetEl.innerHTML = html;
-    applyDynamicLabels(targetEl);
   }
+
+  return out;
+}
+  function renderDayGridCells(dayRows, targetEl = scheduleContentEl, roleFilter = "all") {
+  const rowsRaw = dayRows.slice().sort((a, b) => (a.time || "").localeCompare(b.time || ""));
+
+  if (!rowsRaw.length) {
+    targetEl.innerHTML = "<p style='font-size:0.9rem;color:#6b7280;font-weight:700;'>На цей день немає змін.</p>";
+    return;
+  }
+
+  const ALL_ROLES = [
+    { key: "admin", title: "Admin", cols: 3 },
+    { key: "kellner", title: "Kellner", cols: 4 },
+    { key: "kueche", title: "Küche", cols: 4 },
+    { key: "reinigung", title: "Reinigung", cols: 2 },
+  ];
+
+  const roles = (roleFilter && roleFilter !== "all")
+    ? ALL_ROLES.filter(r => r.key === roleFilter)
+    : ALL_ROLES;
+
+  // ✅ FIX: чтобы имя не прыгало между слотами (один столбик, а не два)
+  const rows = normalizeRoleLanes_(rowsRaw, roles);
+
+  const withSeps = roles.length > 1;
+
+  let gridCols = `70px `;
+  roles.forEach((r, idx) => {
+    gridCols += `repeat(${r.cols}, minmax(46px, 1fr)) `;
+    if (withSeps && idx !== roles.length - 1) gridCols += `10px `;
+  });
+
+  let html = `<div class="day-compact"><div class="day-grid" style="grid-template-columns:${gridCols.trim()};">`;
+
+  // header
+  html += `<div class="day-head day-head--time">Zeit</div>`;
+  roles.forEach((r, idx) => {
+    html += `<div class="day-head day-head--role" style="grid-column: span ${r.cols};">${r.title}</div>`;
+    if (withSeps && idx !== roles.length - 1) html += `<div class="day-head day-sep day-sep--head"></div>`;
+  });
+
+  rows.forEach((r, i) => {
+    const gridRow = i + 2;
+    const isShiftStartLine = (r.time || "").trim() === "16:00";
+    const shiftCls = isShiftStartLine ? " day-row--shiftstart" : "";
+
+    html += `<div class="day-time${shiftCls}" style="grid-row:${gridRow};grid-column:1;">${r.time || ""}</div>`;
+
+    let col = 2;
+
+    roles.forEach((role, ridx) => {
+      for (let slot = 0; slot < role.cols; slot++) {
+        const name = (r[role.key]?.[slot] || "").trim();
+        const prev = i > 0 ? (rows[i - 1][role.key]?.[slot] || "").trim() : "";
+        const next = i < rows.length - 1 ? (rows[i + 1][role.key]?.[slot] || "").trim() : "";
+
+        const isStart = !!name && name !== prev;
+        let isEnd = !!name && name !== next;
+
+        // если это продолжение блока — пропускаем (рисуем только старт)
+        if (name && !isStart) { col++; continue; }
+
+        const styleStr = name ? getPillStyleForName(name) : "";
+        const label = isStart ? name : "";
+
+        let blockSpan = 1;
+        let timeText = "";
+        let addOverlay = false;
+        let hideOverlay = false;
+
+        if (name && isStart) {
+          let e = i;
+          while (e < rows.length - 1 && String(rows[e + 1][role.key]?.[slot] || "").trim() === name) e++;
+          blockSpan = e - i + 1;
+
+          if (blockSpan > 1) isEnd = true;
+
+          if (blockSpan > 1) {
+            timeText = `${timePretty_(rows[i].time)}–${timePretty_(rows[e].time)}`;
+            addOverlay = true;
+            hideOverlay = blockSpan <= 2;
+          }
+        }
+
+        const rowsListAttr = (name && isStart && blockSpan > 1)
+          ? ` data-rows="${rows.slice(i, i + blockSpan).map(x => x.row).join(',')}"`
+          : "";
+
+        html += `
+          <div class="day-cell${shiftCls} ${name ? "day-cell--filled" : "day-cell--empty"} ${isStart ? "day-cell--start" : ""} ${isEnd ? "day-cell--end" : ""}"
+               style="grid-row:${gridRow}${name && isStart ? ` / span ${blockSpan}` : ""};grid-column:${col};${styleStr}"
+               data-row="${r.row}"
+               ${rowsListAttr}
+               data-role="${role.key}"
+               data-slot="${slot}">
+            <span class="day-cell__label" title="${name}" data-full="${name}">${label}</span>
+            ${addOverlay ? `
+              <span class="block-time-overlay" data-len="${blockSpan}" ${hideOverlay ? 'data-hide="1"' : ""}>
+                <span class="block-time-vert">${timeText}</span>
+              </span>
+            ` : ""}
+          </div>
+        `;
+        col++;
+      }
+
+      if (withSeps && ridx !== roles.length - 1) {
+        html += `<div class="day-sep${shiftCls}" style="grid-row:${gridRow};grid-column:${col};"></div>`;
+        col++;
+      }
+    });
+  });
+
+  html += `</div></div>`;
+  targetEl.innerHTML = html;
+  applyDynamicLabels(targetEl);
+}
 
   function renderWeekBlocks(roleFilter = "all") {
   const byDate = new Map();
