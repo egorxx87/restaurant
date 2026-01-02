@@ -387,15 +387,12 @@ async function saveTask() {
 /* ===== API ===== */
 
 async function callTasksApi_(action, payload = null) {
-  const useJsonp = location.protocol === "file:";
-
   if (!payload) {
-    if (useJsonp) return jsonp(`${TASKS_API_URL}?action=${encodeURIComponent(action)}`);
-    const res = await fetch(`${TASKS_API_URL}?action=${encodeURIComponent(action)}`, { method: "GET" });
+    const url = `${TASKS_API_URL}?action=${encodeURIComponent(action)}`;
+    const res = await fetch(url, { method: "GET" });
     return await res.json();
   }
 
-  // POST
   const res = await fetch(TASKS_API_URL, {
     method: "POST",
     headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -410,15 +407,19 @@ async function loadAdminsForSelect() {
   const modalSel = document.getElementById("taskAssignee");
   const filterSel = document.getElementById("assigneeFilter");
 
+  if (!modalSel || !filterSel) return;
   if (!SCHEDULE_API_URL || SCHEDULE_API_URL.includes("PASTE_")) return;
 
   try {
     const now = new Date();
     const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    const data = await jsonp(`${SCHEDULE_API_URL}?action=list&month=${month}`);
+
+    const url = `${SCHEDULE_API_URL}?action=list&month=${encodeURIComponent(month)}`;
+    const res = await fetch(url, { method: "GET" });
+    const data = await res.json();
 
     const names = new Set();
-    (data && data.rows ? data.rows : []).forEach((r) => {
+    (data?.rows || []).forEach((r) => {
       (r.admin || []).forEach((a) => {
         const n = String(a || "").trim();
         if (n) names.add(n);
@@ -427,23 +428,19 @@ async function loadAdminsForSelect() {
 
     const sorted = [...names].sort((a, b) => a.localeCompare(b));
 
-    if (modalSel) {
-      modalSel.innerHTML = "";
-      modalSel.appendChild(new Option("— не вибрано —", ""));
-      sorted.forEach((n) => modalSel.appendChild(new Option(n, n)));
-    }
+    // select в модалці
+    modalSel.innerHTML = "";
+    modalSel.appendChild(new Option("— не вибрано —", ""));
+    sorted.forEach((n) => modalSel.appendChild(new Option(n, n)));
 
-    if (filterSel) {
-      const base = [
-        { value: "__all__", text: "Відповідальний: Усі" },
-        { value: "__none__", text: "Відповідальний: Без відповідального" },
-      ];
-      filterSel.innerHTML = "";
-      base.forEach((o) => filterSel.appendChild(new Option(o.text, o.value)));
-      sorted.forEach((n) => filterSel.appendChild(new Option(`Відповідальний: ${n}`, n)));
-      filterSel.value = "__all__";
-      assigneeFilter = "__all__";
-    }
+    // select-фільтр
+    filterSel.innerHTML = "";
+    filterSel.appendChild(new Option("Відповідальний: Усі", "__all__"));
+    filterSel.appendChild(new Option("Відповідальний: Без відповідального", "__none__"));
+    sorted.forEach((n) => filterSel.appendChild(new Option(`Відповідальний: ${n}`, n)));
+
+    filterSel.value = "__all__";
+    assigneeFilter = "__all__";
   } catch (e) {
     console.error("Admins load error", e);
   }
@@ -514,27 +511,7 @@ function escapeHtml(s) {
     .replaceAll("'", "&#039;");
 }
 
-function jsonp(url) {
-  return new Promise((resolve, reject) => {
-    const cb = "cb_" + Math.random().toString(36).slice(2);
-    const script = document.createElement("script");
-    const sep = url.includes("?") ? "&" : "?";
-    script.src = `${url}${sep}callback=${cb}`;
 
-    window[cb] = (data) => {
-      try { resolve(data); }
-      finally { delete window[cb]; script.remove(); }
-    };
-
-    script.onerror = () => {
-      delete window[cb];
-      script.remove();
-      reject(new Error("JSONP load failed"));
-    };
-
-    document.body.appendChild(script);
-  });
-}
 function setVhUnit(){
   const vh = window.innerHeight * 0.01;
   document.documentElement.style.setProperty('--vh', `${vh}px`);
