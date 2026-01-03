@@ -1445,25 +1445,35 @@ function renderWeekRoleTimeline(roleKey) {
     return ids[idx] || ids[0] || null;
   }
 
-  scheduleContentEl.addEventListener("click", (e) => {
-    const cell = e.target.closest(".day-cell");
-    if (cell) {
-      const realRow = resolveRowFromSpannedCell_(cell, e.clientY);
-      if (!realRow) return;
-      openPicker(cell, realRow, cell.dataset.role, Number(cell.dataset.slot));
-      return;
-    }
-  });
+function getClientY_(e){
+  if (e.touches && e.touches.length) return e.touches[0].clientY;
+  if (e.changedTouches && e.changedTouches.length) return e.changedTouches[0].clientY;
+  return e.clientY;
+}
 
-  if (weekCompactEl) {
-    weekCompactEl.addEventListener("click", (e) => {
-      const cell = e.target.closest(".week-role-cell");
-      if (!cell) return;
-      const realRow = resolveRowFromSpannedCell_(cell, e.clientY);
-      if (!realRow) return;
-      openPicker(cell, realRow, cell.dataset.role, Number(cell.dataset.slot));
-    });
-  }
+function handleCellActivate_(e){
+  const cell = e.target.closest(".day-cell, .week-role-cell");
+  if (!cell) return;
+
+  // важно для телефонов (iOS/Android), чтобы тап не "пропадал"
+  if (e.type === "touchstart") e.preventDefault();
+
+  const y = getClientY_(e);
+  const realRow = resolveRowFromSpannedCell_(cell, y);
+  if (!realRow) return;
+
+  openPicker(cell, realRow, cell.dataset.role, Number(cell.dataset.slot));
+}
+
+// DAY / week-cards / month-cards (всё что рисуется в scheduleContentEl)
+scheduleContentEl.addEventListener("click", handleCellActivate_);
+scheduleContentEl.addEventListener("touchstart", handleCellActivate_, { passive: false });
+
+// WEEK ROLE (compact view)
+if (weekCompactEl){
+  weekCompactEl.addEventListener("click", handleCellActivate_);
+  weekCompactEl.addEventListener("touchstart", handleCellActivate_, { passive: false });
+}
 
   // ==============================
   // STATS

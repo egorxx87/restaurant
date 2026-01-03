@@ -460,7 +460,7 @@ body {
 
   border: 1px solid var(--grid-line);
   border-radius: 14px;
-  overflow: hidden;
+
   background: #fff;
 }
 
