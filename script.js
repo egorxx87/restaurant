@@ -1445,112 +1445,25 @@ function renderWeekRoleTimeline(roleKey) {
     return ids[idx] || ids[0] || null;
   }
 
-  // ==============================
-  // MOBILE EDITING FIX
-  // - Desktop: click to edit (unchanged)
-  // - Phone/Tablet: long-press (~0.6s) to edit
-  //   (normal scroll / horizontal swipe must NOT open picker)
-  // ==============================
-
-  const IS_TOUCH_DEVICE = (
-    (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) ||
-    ("ontouchstart" in window)
-  );
-
-  let suppressClickUntil = 0;
-
-  function openPickerFromEvent_(cell, clientY) {
-    const realRow = resolveRowFromSpannedCell_(cell, clientY);
-    if (!realRow) return;
-    openPicker(cell, realRow, cell.dataset.role, Number(cell.dataset.slot));
-  }
-
-  // Desktop click (leave as-is, but ignore on touch devices)
   scheduleContentEl.addEventListener("click", (e) => {
-    if (IS_TOUCH_DEVICE) {
-      if (Date.now() < suppressClickUntil) return;
-      return; // on phones editing is long-press only
-    }
     const cell = e.target.closest(".day-cell");
-    if (!cell) return;
-    openPickerFromEvent_(cell, e.clientY);
+    if (cell) {
+      const realRow = resolveRowFromSpannedCell_(cell, e.clientY);
+      if (!realRow) return;
+      openPicker(cell, realRow, cell.dataset.role, Number(cell.dataset.slot));
+      return;
+    }
   });
 
   if (weekCompactEl) {
     weekCompactEl.addEventListener("click", (e) => {
-      if (IS_TOUCH_DEVICE) {
-        if (Date.now() < suppressClickUntil) return;
-        return;
-      }
       const cell = e.target.closest(".week-role-cell");
       if (!cell) return;
-      openPickerFromEvent_(cell, e.clientY);
+      const realRow = resolveRowFromSpannedCell_(cell, e.clientY);
+      if (!realRow) return;
+      openPicker(cell, realRow, cell.dataset.role, Number(cell.dataset.slot));
     });
   }
-
-  // Long-press editing for touch devices
-  function bindLongPress_(container) {
-    if (!container) return;
-    const HOLD_MS = 600;
-    const MOVE_PX = 10;
-
-    let timer = null;
-    let startX = 0;
-    let startY = 0;
-    let lastY = 0;
-    let targetCell = null;
-    let moved = false;
-
-    function clearTimer_() {
-      if (timer) {
-        clearTimeout(timer);
-        timer = null;
-      }
-    }
-
-    container.addEventListener("touchstart", (e) => {
-      if (!IS_TOUCH_DEVICE) return;
-      if (!e.touches || !e.touches.length) return;
-
-      const t = e.touches[0];
-      startX = t.clientX;
-      startY = t.clientY;
-      lastY = t.clientY;
-      moved = false;
-
-      targetCell = e.target && e.target.closest
-        ? e.target.closest(".day-cell, .week-role-cell")
-        : null;
-
-      if (!targetCell) return;
-
-      clearTimer_();
-      timer = setTimeout(() => {
-        if (!targetCell || moved) return;
-        suppressClickUntil = Date.now() + 900; // stop the synthetic click after long-press
-        openPickerFromEvent_(targetCell, lastY);
-      }, HOLD_MS);
-    }, { passive: true });
-
-    container.addEventListener("touchmove", (e) => {
-      if (!timer) return;
-      if (!e.touches || !e.touches.length) return;
-      const t = e.touches[0];
-      lastY = t.clientY;
-      const dx = Math.abs(t.clientX - startX);
-      const dy = Math.abs(t.clientY - startY);
-      if (dx > MOVE_PX || dy > MOVE_PX) {
-        moved = true;
-        clearTimer_();
-      }
-    }, { passive: true });
-
-    container.addEventListener("touchend", clearTimer_, { passive: true });
-    container.addEventListener("touchcancel", clearTimer_, { passive: true });
-  }
-
-  bindLongPress_(scheduleContentEl);
-  bindLongPress_(weekCompactEl);
 
   // ==============================
   // STATS

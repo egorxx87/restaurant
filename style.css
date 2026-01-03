@@ -1127,35 +1127,6 @@ body {
     box-shadow: 1px 0 0 rgba(17,24,39,0.08);
   }
 }
-
-/* =====================================================
-   MOBILE COLUMN STABILITY (fix "columns drift")
-   - Only affects phones/tablets
-   - Keeps table columns locked to fixed widths while scrolling
-   ===================================================== */
-@media (max-width: 820px){
-  .schedule-wrapper{ overflow-x:auto !important; }
-
-  .schedule-table{
-    table-layout: fixed;            /* важное: фикс ширины колонок */
-    min-width: 980px;               /* чтобы сетка не сжималась */
-  }
-
-  /* время */
-  .schedule-table th:first-child,
-  .schedule-table td.time-cell{
-    width: 70px;
-    min-width: 70px;
-    max-width: 70px;
-  }
-
-  /* остальные колонки */
-  .schedule-table th:not(:first-child),
-  .schedule-table td:not(.time-cell){
-    width: 120px;
-    min-width: 120px;
-  }
-}
 @media (max-width: 820px){
   /* FIX: overflow:hidden in .day-grid breaks sticky on iOS/phones */
   .day-grid{ overflow: visible !important; }
