@@ -1393,3 +1393,64 @@ body {
 .week-role-wrap{
   touch-action: pan-x pan-y;
 }
+
+
+/* =====================================================
+   MOBILE VISIBILITY + EDIT UX
+   - Bigger cells/fonts on phone
+   - Hint: long-press to edit (JS)
+   ===================================================== */
+@media (max-width: 480px){
+  .layout{ padding: 10px !important; }
+
+  /* make main grid easier to read/tap */
+  .day-grid{
+    grid-auto-rows: 36px !important;
+    min-width: 1040px !important; /* keep columns readable; scroll horizontally */
+  }
+  .day-time{
+    font-size: 14px !important;
+    padding: 0 10px !important;
+    min-width: 76px !important;
+  }
+  .day-head{
+    font-size: 13px !important;
+    padding: 8px 10px !important;
+  }
+  .day-cell{
+    padding: 6px 8px !important;
+  }
+  .day-cell__label,
+  .week-role-cell__label{
+    font-size: 13px !important;
+  }
+
+  /* week role view bigger too */
+  .week-role-grid{
+    grid-auto-rows: 36px !important;
+    min-width: 1040px !important;
+  }
+  .week-role-time{
+    font-size: 14px !important;
+    padding: 0 10px !important;
+    min-width: 76px !important;
+  }
+  .week-role-head{
+    font-size: 13px !important;
+    padding: 8px 10px !important;
+  }
+
+  /* picker modal: larger hit targets */
+  .picker{
+    border-radius: 18px !important;
+    padding: 16px !important;
+  }
+  .picker-option-btn{
+    padding: 10px 14px !important;
+    font-size: 15px !important;
+  }
+  .picker-actions button{
+    padding: 10px 14px !important;
+    font-size: 15px !important;
+  }
+}

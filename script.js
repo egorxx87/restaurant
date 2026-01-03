@@ -1445,35 +1445,108 @@ function renderWeekRoleTimeline(roleKey) {
     return ids[idx] || ids[0] || null;
   }
 
+
+// ==============================
+// MOBILE EDITING LOGIC (fix iPhone scroll)
+// - Desktop: normal click
+// - Mobile (touch): LONG PRESS (hold 300ms) to edit
+//   This prevents accidental picker open while scrolling.
+// ==============================
+
 function getClientY_(e){
   if (e.touches && e.touches.length) return e.touches[0].clientY;
   if (e.changedTouches && e.changedTouches.length) return e.changedTouches[0].clientY;
-  return e.clientY;
+  return (e.clientY !== undefined) ? e.clientY : 0;
+}
+function getClientX_(e){
+  if (e.touches && e.touches.length) return e.touches[0].clientX;
+  if (e.changedTouches && e.changedTouches.length) return e.changedTouches[0].clientX;
+  return (e.clientX !== undefined) ? e.clientX : 0;
 }
 
-function handleCellActivate_(e){
-  const cell = e.target.closest(".day-cell, .week-role-cell");
-  if (!cell) return;
-
-  // важно для телефонов (iOS/Android), чтобы тап не "пропадал"
-  if (e.type === "touchstart") e.preventDefault();
-
-  const y = getClientY_(e);
+function openPickerFromEvent_(cell, evt){
+  const y = getClientY_(evt);
   const realRow = resolveRowFromSpannedCell_(cell, y);
   if (!realRow) return;
-
   openPicker(cell, realRow, cell.dataset.role, Number(cell.dataset.slot));
 }
 
-// DAY / week-cards / month-cards (всё что рисуется в scheduleContentEl)
-scheduleContentEl.addEventListener("click", handleCellActivate_);
-scheduleContentEl.addEventListener("touchstart", handleCellActivate_, { passive: false });
-
-// WEEK ROLE (compact view)
-if (weekCompactEl){
-  weekCompactEl.addEventListener("click", handleCellActivate_);
-  weekCompactEl.addEventListener("touchstart", handleCellActivate_, { passive: false });
+// Desktop (mouse) click
+function onGridClick_(e){
+  const cell = e.target.closest(".day-cell, .week-role-cell");
+  if (!cell) return;
+  // if it was a touch sequence, ignore synthetic click
+  if (cell.__skipNextClick) { cell.__skipNextClick = false; return; }
+  openPickerFromEvent_(cell, e);
 }
+
+// Mobile: long press to edit
+const LONG_PRESS_MS = 300;
+const MOVE_TOL = 10;
+
+function attachLongPress_(hostEl){
+  if (!hostEl) return;
+
+  let state = null;
+
+  const clear = () => {
+    if (state && state.timer) clearTimeout(state.timer);
+    state = null;
+  };
+
+  hostEl.addEventListener("click", onGridClick_);
+
+  hostEl.addEventListener("touchstart", (e) => {
+    const cell = e.target.closest(".day-cell, .week-role-cell");
+    if (!cell) return;
+
+    // allow scroll; don't preventDefault here
+    const x = getClientX_(e);
+    const y = getClientY_(e);
+
+    // mark to ignore synthetic click after touch
+    cell.__skipNextClick = true;
+
+    state = {
+      cell,
+      startX: x,
+      startY: y,
+      lastEvt: e,
+      moved: false,
+      timer: setTimeout(() => {
+        if (!state || state.moved) return;
+        // stop iOS "text selection / rubber band" and open picker
+        try { e.preventDefault(); } catch(_) {}
+        openPickerFromEvent_(cell, state.lastEvt || e);
+        clear();
+      }, LONG_PRESS_MS),
+    };
+  }, { passive: false });
+
+  hostEl.addEventListener("touchmove", (e) => {
+    if (!state) return;
+    state.lastEvt = e;
+    const x = getClientX_(e);
+    const y = getClientY_(e);
+    const dx = Math.abs(x - state.startX);
+    const dy = Math.abs(y - state.startY);
+    if (dx > MOVE_TOL || dy > MOVE_TOL) {
+      state.moved = true;
+      clear(); // it was scroll
+    }
+  }, { passive: true });
+
+  hostEl.addEventListener("touchend", () => {
+    // if user just tapped quickly -> do nothing (long press is required)
+    clear();
+  }, { passive: true });
+
+  hostEl.addEventListener("touchcancel", clear, { passive: true });
+}
+
+// Attach to both views
+attachLongPress_(scheduleContentEl);
+attachLongPress_(weekCompactEl);
 
   // ==============================
   // STATS
