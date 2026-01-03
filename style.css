@@ -1389,3 +1389,7 @@ body {
   border:1px solid rgba(122,74,18,.25);
   line-height:1;
 }
+.day-compact,
+.week-role-wrap{
+  touch-action: pan-x pan-y;
+}
