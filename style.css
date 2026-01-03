@@ -412,7 +412,7 @@ body {
   color: #111827;
   cursor: pointer;
   box-shadow: 0 6px 14px rgba(0,0,0,0.15);
-  overflow: hidden;
+  overflow: visible;
 }
 /* отключаем старый абсолютный day-blocks режим (он ломает верстку) */
 .day-blocks-grid,
@@ -460,7 +460,7 @@ body {
 
   border: 1px solid var(--grid-line);
   border-radius: 14px;
-
+  overflow: visible;
   background: #fff;
 }
 
@@ -504,7 +504,7 @@ body {
   margin: 0;
   border-radius: 0;
   cursor: pointer;
-  overflow: hidden;
+  overflow: visible;
 
   border-bottom: 1px solid var(--grid-line);
   border-left: 0;                 /* убираем вертикальную сетку */
@@ -517,7 +517,7 @@ body {
   font-weight: 900;
   line-height: 1.05;
   white-space: nowrap;
-  overflow: hidden;
+  overflow: visible;
   text-overflow: ellipsis;
 }
 
@@ -588,7 +588,7 @@ body {
   background: #fff;
   border: 1px solid #eef2f7;
   border-radius: 16px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .week-day-title{
@@ -677,7 +677,7 @@ body {
   padding: 2px 6px;
   border-bottom: 1px solid var(--grid-line, rgba(17,24,39,0.035));
   cursor: pointer;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .week-role-cell--disabled{
@@ -690,7 +690,7 @@ body {
   font-weight: 900;
   line-height: 1.05;
   white-space: nowrap;
-  overflow: hidden;
+  overflow: visible;
   text-overflow: ellipsis;
 }
 
@@ -870,7 +870,7 @@ body {
 
   color: #111827;
   white-space: nowrap;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* На очень узких колонках (неделя официанты/кухня) — чуть меньше */
@@ -884,7 +884,7 @@ body {
 .day-cell__label,
 .week-role-cell__label{
   white-space: nowrap;
-  overflow: hidden;
+  overflow: visible;
   text-overflow: clip; /* без троеточий */
 }
 .block-time-overlay[data-len="3"] .block-time-vert{
@@ -896,7 +896,7 @@ body {
 .day-cell__label,
 .week-role-cell__label{
   white-space: nowrap;
-  overflow: hidden;
+  overflow: visible;
   text-overflow: clip; /* без троеточий */
 }
 /* ===== Labels: читаемо, не жирно, всегда видно ===== */
@@ -916,7 +916,7 @@ body {
   -webkit-backdrop-filter: blur(2px);
 
   color: rgba(17,24,39,0.92) !important;
-  overflow: hidden;
+  overflow: visible;
   white-space: nowrap;
   text-overflow: clip; /* без ... */
 }
@@ -968,7 +968,7 @@ body {
 
   display: block;
   max-width: 100%;
-  overflow: hidden;
+  overflow: visible;
   white-space: nowrap;
   text-overflow: clip; /* без ... */
 }
@@ -1022,7 +1022,7 @@ body {
   background: #fff;
   border: 1px solid #eef2f7;
   border-radius: 16px;
-  overflow: hidden;
+  overflow: visible;
   margin-bottom: 14px;
 }
 
@@ -1389,68 +1389,40 @@ body {
   border:1px solid rgba(122,74,18,.25);
   line-height:1;
 }
-.day-compact,
-.week-role-wrap{
-  touch-action: pan-x pan-y;
-}
-
 
 /* =====================================================
-   MOBILE VISIBILITY + EDIT UX
-   - Bigger cells/fonts on phone
-   - Hint: long-press to edit (JS)
+   MOBILE VISIBILITY BOOST (phones)
+   - bigger rows / text / buttons
+   - keep horizontal scroll smooth
    ===================================================== */
-@media (max-width: 480px){
-  .layout{ padding: 10px !important; }
+@media (max-width: 520px){
+  .layout{ padding: 10px; }
+  .header__title{ font-size: 1.35rem; }
+  .header__subtitle{ font-size: 0.98rem; }
 
-  /* make main grid easier to read/tap */
-  .day-grid{
-    grid-auto-rows: 36px !important;
-    min-width: 1040px !important; /* keep columns readable; scroll horizontally */
-  }
-  .day-time{
-    font-size: 14px !important;
-    padding: 0 10px !important;
-    min-width: 76px !important;
-  }
-  .day-head{
-    font-size: 13px !important;
-    padding: 8px 10px !important;
-  }
-  .day-cell{
-    padding: 6px 8px !important;
-  }
-  .day-cell__label,
-  .week-role-cell__label{
-    font-size: 13px !important;
-  }
+  .week-nav__btn{ padding: 10px 12px; font-size: 0.95rem; }
+  .view-toggle__btn{ padding: 9px 14px; font-size: 0.95rem; }
 
-  /* week role view bigger too */
-  .week-role-grid{
-    grid-auto-rows: 36px !important;
-    min-width: 1040px !important;
-  }
-  .week-role-time{
-    font-size: 14px !important;
-    padding: 0 10px !important;
-    min-width: 76px !important;
-  }
-  .week-role-head{
-    font-size: 13px !important;
-    padding: 8px 10px !important;
-  }
+  .week-filter__pill{ padding: 9px 14px; font-size: 0.95rem; }
 
-  /* picker modal: larger hit targets */
-  .picker{
-    border-radius: 18px !important;
-    padding: 16px !important;
-  }
-  .picker-option-btn{
-    padding: 10px 14px !important;
-    font-size: 15px !important;
-  }
-  .picker-actions button{
-    padding: 10px 14px !important;
-    font-size: 15px !important;
-  }
+  /* day grid: bigger */
+  .day-grid{ grid-auto-rows: 34px !important; }
+  .day-time{ font-size: 0.98rem; }
+  .day-head{ font-size: 0.92rem; padding: 8px 8px; }
+
+  .day-cell{ padding: 4px 8px; }
+  .day-cell__label{ font-size: 14px !important; font-weight: 800 !important; }
+
+  /* week role */
+  .week-role-grid{ grid-auto-rows: 34px !important; }
+  .week-role-time{ font-size: 0.98rem; }
+  .week-role-head{ font-size: 0.92rem; padding: 8px 8px; }
+  .week-role-cell{ padding: 4px 8px; }
+  .week-role-cell__label{ font-size: 14px !important; font-weight: 800 !important; }
+
+  /* picker (modal) bigger hit targets */
+  .picker{ padding: 16px; }
+  .picker-title{ font-size: 1.15rem; }
+  .picker-option-btn{ padding: 12px 14px; font-size: 1rem; }
+  .picker-actions button{ padding: 12px 14px; font-size: 1rem; }
 }
